@@ -16,7 +16,6 @@ import math
 import matplotlib.pyplot as plt
 
 
-
 class DataGenerator:
     
     def __init__(self, nb_train, nb_test, nb_class):
@@ -124,16 +123,16 @@ class DataGenerator:
 
     def n_spike(self, nb_data, noise, distance, amplitude):
         
-        """
-               Génère des données alatoires de type N-circle où N représente le nombre de classes. Les données sont
-               répartie en coordonnées polaire selon une distribution normale sur la rayon.
-
-               :param nb_data: Nombre de données à générer au total.
-               :param noise: Écart-type de la distribution normale qui sera utilisée pour générer les données
-               :param distance: Distance minimale entre les espérances de chacune des classes.
-               :param amplitude: Amplitude sinusoïdale.
-               :return: Deux array, un contenant données en coordonnées cartésiennes et l'autre les classes correspondantes.
-               """
+       """
+       Génère des données alatoires de type N-circle où N représente le nombre de classes. Les données sont
+       répartie en coordonnées polaire selon une distribution normale sur la rayon.
+    
+       :param nb_data: Nombre de données à générer au total.
+       :param noise: Écart-type de la distribution normale qui sera utilisée pour générer les données
+       :param distance: Distance minimale entre les espérances de chacune des classes.
+       :param amplitude: Amplitude sinusoïdale.
+       :return: Deux array, un contenant données en coordonnées cartésiennes et l'autre les classes correspondantes.
+       """
 
         classes = np.array([])
         radius = np.array([])
@@ -160,6 +159,7 @@ class DataGenerator:
         return data, classes.astype(dtype='int32')
 
     def generer_donnees(self, modele='nCircle', noise=0.5, distance=5, amplitude=1):
+        
         """
         Génère des données d'entrainement et de test selon un modèle donnée. Pour l'instant, les choix sont
         seulement nCircle et nRegion
@@ -185,9 +185,10 @@ class DataGenerator:
         return x_train, t_train, x_test, t_test
 
 
-def afficher(data, classes):
+def show_data_points(data, classes):
+
     """
-    Permet d'afficher les données dans un graphique convivial
+    Allows to show our data points in a graphic
 
     :param data: Une matrice Nx2 contenant les coordonnées cartésiennes à afficher.
     :param classes: Un array contenant les classes correspondantes aux données
