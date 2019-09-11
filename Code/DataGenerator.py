@@ -1,41 +1,45 @@
 """
  *  DataGenerator.py
- *  @author: Alexandre Ayotte - stagiaire en intelligence artificielle. Soucy.inc
- *  @version:   0.01 - 2019-05-29
+ *  @authors: Alexandre Ayotte and Nicolas Raymond
+ *  @version:   0.01 - 2019-09-10
  *
  *  Description:
- *      Ce programme a pour but de générer différent ensemble de données aléatoires. Comme des ensembles de type
- *      N-Circle ou encore des nuages de points à n-classes. Il s'agit bien sûr d'un programme d'entrainement pour
- *      les données en IA. Cette classe fait partie d'un projet visant à apprendre tensorflow. Toutefois, le module
- *      tensorflow ne sera pas utilisé dans ce programme. L'objectif étant de le rendre le plus maléable possible.
+     
+ *   The goal of this file is to provide a class DataGenerator that we'll use to generate
+ *   training and testing data sets of data that will be helpful to test performance of different autoML tools.
+ *   For example, N-Circle and N-Region.
+
 """
 
 import numpy as np
-import random
 import math
 import matplotlib.pyplot as plt
 
 
-class DataGenerator:
-    def __init__(self, nb_train, nb_test, nb_class):
-        """
-        Classe qui génère des données aléatoire selon plusieurs modèles disponibles(2).
 
-        :param nb_train: Nombre de données d'entrainement
-        :param nb_test:  Nombre de données de test
-        :param nb_classes: Nombre de classes
+class DataGenerator:
+    
+    def __init__(self, nb_train, nb_test, nb_class):
+        
+        """
+        Class that generates training and testing datasets of different kinds.
+
+        :param nb_train: Number of training data points
+        :param nb_test:  Number of training data points
+        :param nb_classes: Number of classes
         """
         self.nb_train = nb_train
         self.nb_test = nb_test
         self.nb_class = nb_class
 
     def polar_to_cart(self, radius, angle):
+        
         """
-        Convertie les coordonnées polaires en coordonnées cartésiennes
+        Converts polar coordinates into cartesian coordinates
 
-        :param radius: un array contenant les rayons de chacun des points
-        :param angle: un array contenant l'angle de chacun des points
-        :return: deux array contenant les coordonnées en horizontales et verticales respectivement
+        :param radius: numpy array containing radius of every points in our 2D space
+        :param angle: numpy array containing angles of every points in our 2D space
+        :return: two array containing x and y coordinates respectively
         """
 
         axis_x = radius * np.cos(angle)
@@ -43,14 +47,16 @@ class DataGenerator:
         return axis_x.astype(dtype='float32'), axis_y.astype(dtype='float32')
 
     def n_circle(self, nb_data, noise, distance):
+        
         """
-        Génère des données alatoires de type N-circle où N représente le nombre de classes. Les données sont
-        répartie en coordonnées polaire selon une distribution normale sur la rayon.
+        Generates random datasets of type N-Circle where N represents number of classes.
+        Data points are normally distributed in every classes using Gaussian distribution
+        over radius.
 
-        :param nb_data: Nombre de données à générer au total.
-        :param noise: Écart-type de la distribution normale qui sera utilisée pour générer les données
-        :param distance: distance minimale entre les espérances de chacune des classes.
-        :return: Deux array, un contenant données en coordonnées cartésiennes et l'autre les classes correspondantes.
+        :param nb_data: Number of data points to generate
+        :param noise: Standard deviation use in our Gaussian distribution
+        :param distance: Expectation over radius difference between each classes (circles)
+        :return: Two numpy array containing cartesian coordinates and class targets respectively
         """
 
         classes = np.array([])
@@ -58,53 +64,66 @@ class DataGenerator:
 
         angle = 2*math.pi*np.random.rand(nb_data)
 
-        # Donnée restante à générer
+        # Number of data points left to generate
         data_left = nb_data
 
         for i in range(self.nb_class):
-            # On sépare les données de la manière la plus équitable possible
+            
+            # We split data points fairly between classes (circles)
             split = round(data_left/ (self.nb_class - i))
 
-            # On génère un vecteur de rayon aléatoire pour cette classe
+            # We generate a numpy array containing normally distributed value of radius
             temp = np.random.normal(size=split, loc=distance*(i + 1), scale=noise)
             data_left -= split
+            
+            # We update our radius and classes arrays
             radius = np.append(radius, temp)
             classes = np.append(classes, np.ones(split) * i)
-
+        
+        # We convert our data points to cartesian coordinates
         data = np.vstack([self.polar_to_cart(radius, angle)]).T
+        
         return data, classes.astype(dtype='int32')
 
     def n_region(self, nb_data, noise):
+        
         """
-        Génère des données alatoires de type N-region où N représente le nombre de classes. Les données sont
-        répartie en coordonnées polaire selon une distribution normale sur l'angle. Les données sont séparées
-        en trois triangles pointant tous vers le centre.
+        Generates random datasets of type N-Region where N represents number of classes. 
+        Every region should look like a triangle.
 
-        :param nb_data: Nombre de données aléatoires à générer
-        :param noise: Écart-type de la distribution normale qui sera utilisée pour générer les données
-        :return: Deux array, un contenant données en coordonnées cartésiennes et l'autre les classes correspondantes.
+        :param nb_data: Number of data points to generate.
+        :param noise: Standard deviation use for our Gaussian distribution over angles
+        :return: Two numpy array containing cartesian coordinates and class targets respectively
         """
 
         classes = np.array([])
         angle = np.array([])
 
         radius = 4 * np.random.rand(nb_data) + 1
+        
+        # Number of data points left to generate
         data_left = nb_data
 
         for i in range(self.nb_class):
-            # On sépare les données de la manière la plus équitable possible
+            
+            # We split data points fairly between classes (regions)
             split = round(data_left / (self.nb_class - i))
 
-            # On génère un vecteur de rayon aléatoire pour cette classe
+            # We generate a numpy array containing normally distributed value of angles
             temp = np.random.normal(size=split, loc=(2*math.pi*i /self.nb_class), scale=noise)
             data_left -= split
+            
+            # We update our angle array
             angle = np.append(angle, temp)
             classes = np.append(classes, np.ones(split) * i)
-
+        
+        # We convert our data points to cartesian coordinates
         data = np.vstack([self.polar_to_cart(radius, angle)]).T
+        
         return data, classes.astype(dtype='int32')
 
     def n_spike(self, nb_data, noise, distance, amplitude):
+        
         """
                Génère des données alatoires de type N-circle où N représente le nombre de classes. Les données sont
                répartie en coordonnées polaire selon une distribution normale sur la rayon.
