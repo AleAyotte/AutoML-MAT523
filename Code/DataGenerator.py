@@ -25,13 +25,14 @@ class DataGenerator:
 
         :param nb_train: Number of training data points
         :param nb_test:  Number of training data points
-        :param nb_classes: Number of classes
+        :param nb_class: Number of classes
         """
         self.nb_train = nb_train
         self.nb_test = nb_test
         self.nb_class = nb_class
 
-    def polar_to_cart(self, radius, angle):
+    @staticmethod
+    def polar_to_cart(radius, angle):
         
         """
         Converts polar coordinates into cartesian coordinates
@@ -123,31 +124,33 @@ class DataGenerator:
 
     def n_spike(self, nb_data, noise, distance, amplitude):
         
-       """
-       Génère des données alatoires de type N-circle où N représente le nombre de classes. Les données sont
-       répartie en coordonnées polaire selon une distribution normale sur la rayon.
+        """
+        Generates random datasets of type N-Spike where N represents number of classes.
+        Every region should look like a circle with spike
     
-       :param nb_data: Nombre de données à générer au total.
-       :param noise: Écart-type de la distribution normale qui sera utilisée pour générer les données
-       :param distance: Distance minimale entre les espérances de chacune des classes.
-       :param amplitude: Amplitude sinusoïdale.
-       :return: Deux array, un contenant données en coordonnées cartésiennes et l'autre les classes correspondantes.
-       """
+        :param nb_data: Number of data points to generate.
+        :param noise: Standard deviation use for our Gaussian distribution over distance from origin
+        :param distance: Mean distance between each classes
+        :param amplitude: Sinusoidal amplitude.
+        :return: Two numpy array containing cartesian coordinates and class targets respectively.
+        """
 
         classes = np.array([])
         radius = np.array([])
 
         angle = 2 * math.pi * np.random.rand(nb_data)
+
+        # Number of data points left to generate
         data_left = nb_data
 
         for i in range(self.nb_class):
-            # On sépare les données de la manière la plus équitable possible
+            # We split data points fairly between classes
             split = round(data_left / (self.nb_class - i))
 
-            # On calcul la distance par rapport au centre.
+            # We calculate the distance from the origin
             mean = distance * (i + 1)
 
-            # On génère un vecteur de rayon aléatoire pour cette classe
+            # We generate a vector of random radius for this class
             temp = np.random.normal(size=split, loc=mean, scale=noise)
             data_left -= split
             radius = np.append(radius, temp)
@@ -158,17 +161,17 @@ class DataGenerator:
         data = np.vstack([self.polar_to_cart(radius, angle)]).T
         return data, classes.astype(dtype='int32')
 
-    def generer_donnees(self, modele='nCircle', noise=0.5, distance=5, amplitude=1):
-        
-        """
-        Génère des données d'entrainement et de test selon un modèle donnée. Pour l'instant, les choix sont
-        seulement nCircle et nRegion
+    def generate_data(self, modele='nCircle', noise=0.5, distance=5, amplitude=1):
 
-        :param modele: Le modèle a utlisé pour générer les donnnées
-        :param noise:  L'écart-type sur les données
-        :param distance:  La distance entre les anneaux si l'on prend le modèle nCircle
-        :param amplitude:   L'amplitude sinusoidale pour le modèle nSpike
-        :return: un ensemble d'entrainement et un ensemble de test.
+        """
+        Generate training and test dataset according the given model.
+
+        :param modele: The function that will be use to generate the data. Example: nCircle, nSpike...
+        :param noise:  The standard deviation of the normal distribution that generate the data
+        :param distance:  The distance between each ring in the nCircle model
+        :param amplitude:   Sinusoidal amplitude of the nSpike model
+        :return:    2 numpy matrix that contrain training features and test features and 2 numpy array of
+                    training and test labels.
         """
 
         if modele == "nCircle":
@@ -190,11 +193,10 @@ def show_data_points(data, classes):
     """
     Allows to show our data points in a graphic
 
-    :param data: Une matrice Nx2 contenant les coordonnées cartésiennes à afficher.
-    :param classes: Un array contenant les classes correspondantes aux données
+    :param data: A Nx2 matrix that represent the data points coordinates
+    :param classes: An array that contain the label of each data point
     :return:
     """
 
-    # colour = np.where(classes==0, 'r', np.where(classes==1, 'b', 'g'))
     plt.scatter(data[:, 0], data[:, 1], s=105, c=classes, edgecolors='b')
     plt.show()
