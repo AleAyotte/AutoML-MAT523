@@ -170,7 +170,7 @@ class DataGenerator:
         :param noise:  The standard deviation of the normal distribution that generate the data
         :param distance:  The distance between each ring in the nCircle model
         :param amplitude:   Sinusoidal amplitude of the nSpike model
-        :return:    2 numpy matrix that contrain training features and test features and 2 numpy array of
+        :return:    2 numpy matrix that contain training features and test features and 2 numpy array of
                     training and test labels.
         """
 
@@ -193,7 +193,7 @@ def show_data_points(data, classes):
     """
     Allows to show our data points in a graphic
 
-    :param data: A Nx2 matrix that represent the data points coordinates
+    :param data: A Nx2 matrix that represents the data points coordinates
     :param classes: An array that contain the label of each data point
     :return:
     """
