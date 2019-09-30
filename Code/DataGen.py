@@ -8,6 +8,7 @@
 
 from sklearn.datasets import make_moons
 from sklearn.datasets import make_circles
+from sklearn.datasets import make_swiss_roll
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -41,6 +42,10 @@ class DataGenerator:
             x_train, t_train = make_circles(self.train_size, noise=noise)
             x_test, t_test = make_circles(self.test_size, noise=noise)
 
+        elif self.model == "swiss_roll":
+            x_train, t_train = make_swiss_roll(self.train_size, noise=noise)
+            x_test, t_test = make_swiss_roll(self.test_size, noise=noise)
+
         else:
             print("Model: {} does not exist in this program".format(self.model))
             return -1   # Return -1 cause the
@@ -49,7 +54,12 @@ class DataGenerator:
 
 
 def plot_data(data, target):
+    """
+    Show a two dimensional dataset in a chart.
 
+    :param data: A numpy array of dimension Nx2, that represent the coordinates of each data point.
+    :param target: The sample labels
+    """
     label_0 = np.where(target == 0, True, False)
     data_0 = data[label_0, :]
     data_1 = data[~label_0, :]
