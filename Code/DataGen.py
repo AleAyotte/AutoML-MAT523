@@ -46,9 +46,10 @@ class DataGenerator:
             x_train, t_train = make_swiss_roll(self.train_size, noise=noise)
             x_test, t_test = make_swiss_roll(self.test_size, noise=noise)
 
+        # else this model doesn't exist in this program and we want to throw an error message
         else:
             print("Model: {} does not exist in this program".format(self.model))
-            return -1   # Return -1 cause the
+            return -1
 
         return x_train, t_train, x_test, t_test
 
