@@ -46,3 +46,13 @@ class DataGenerator:
             return -1   # Return -1 cause the
 
         return x_train, t_train, x_test, t_test
+
+
+def plot_data(data, target):
+
+    label_0 = np.where(target == 0, True, False)
+    data_0 = data[label_0, :]
+    data_1 = data[~label_0, :]
+
+    plt.plot(data_0[:, 0], data_0[:, 1], 'bs', data_1[:, 0], data_1[:, 1], 'g^')
+    plt.show()
