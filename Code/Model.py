@@ -81,7 +81,7 @@ class SVM(Model):
         :param coef0: Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
         """
 
-        model = sk.svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
+        model_frame = sk.svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
         super().__init__({'C':C, 'kernel':kernel, 'degree':degree, 'gamma':gamma, 'coef0':coef0})
 
 
@@ -94,7 +94,7 @@ class SVM(Model):
         :param t_train: Nx1 numpy array of classes associated with each observation in the training set
         """
 
-        self.model.fit(X_train, t_train)
+        self.model_frame.fit(X_train, t_train)
 
 
     def predict(self, X):
@@ -107,7 +107,7 @@ class SVM(Model):
 
         """
 
-        return self.model.predict(X)
+        return self.model_frame.predict(X)
 
 
 class MLP(Model):
@@ -140,9 +140,9 @@ class MLP(Model):
         :param beta_2: Exponential decay rate for estimates of second moment vector in adam, should be in [0, 1)
         """
 
-        model = sk.neural_network.MLPClassifier(hidden_layer_sizes=(100, ), activation='relu', solver='adam',
-                                                alpha=0.0001, batch_size='auto',learning_rate='constant', learning_rate_init=0.001,
-                                                power_t=0.5, max_iter=200, momentum=0.9, beta_1=0.9, beta_2=0.999)
+        model_frame = sk.neural_network.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
+                                                alpha=alpha, batch_size=batch_size,learning_rate=learning_rate, learning_rate_init=learning_rate_init,
+                                                power_t=power_t, max_iter=max_iter, momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
         super().__init__({'hidden_layer_sizes':hidden_layer_sizes, 'activation':activation, 'solver':solver, 'alpha':alpha,
                           'batch_size':batch_size, 'learning_rate':learning_rate, 'power_t':power_t, 'max_iter':max_iter,
@@ -157,7 +157,7 @@ class MLP(Model):
             :param t_train: Nx1 numpy array classes associated with each observations in the training set
             """
 
-            self.model.fit(X_train, t_train)
+            self.model_frame.fit(X_train, t_train)
 
 
         def predict(self, X):
@@ -170,5 +170,5 @@ class MLP(Model):
 
             """
 
-            return self.model.predict(X)
+            return self.model_frame.predict(X)
 
