@@ -16,8 +16,11 @@ class HPtuner:
         Class that generate an automatic hyperparameter tuner for the model specified
 
         :param model: Model on which we want to optimize hyperparameters {SVM, MLP} # Work in progress
-        :param method: Method of optimization to use {'grid_search', 'random_search'} # Work in progress
+        :param method: Name of the method of optimization to use {'grid_search', 'random_search'} # Work in progress
         """
+        if method not in ['grid_search', 'random_search']:
+            raise Exception('No such method "{}" implemented for HPtuner'.format(method))
+
 
         self.model = model
         self.method = method
@@ -80,5 +83,20 @@ class HPtuner:
 
         """
 
-        self.model = sk.model_selection.RandomizedSearchCV(self.model, self.mode.HP_space, n_iter)
+        self.model = sk.model_selection.RandomizedSearchCV(self.model, self.model.HP_space, n_iter)
+
+
+    def tune(self, n_iter = 10):
+
+        """
+        Optimize model's hyperparameters with the method specified at the ignition of our tuner
+
+        :param nb_iter: Number of iteration to do. Only considered if method is 'random_search'
+        """
+
+        if self.method == 'grid_search':
+            self.grid_search_sklearn()
+
+        elif self.method == 'random_search':
+            self.random_search_sklearn(n_iter)
 
