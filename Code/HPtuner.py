@@ -6,7 +6,7 @@
     @Description:       This file provide all functions linked to hyperparameters optimization methods
 """
 
-
+import sklearn as sk
 
 class HPtuner:
 
@@ -57,4 +57,18 @@ class HPtuner:
 
         else:
             raise Exception('No such hyperparameter "{}" in our model'.format(hyperparameter))
+
+
+    def Grid_search_sklearn(self):
+
+        """
+        Build a GridSearchCV sklearn object based on our model and his hyperparameters' space
+
+        :return: Change our model for a GridSearchCV
+        """
+
+        self.model = sk.model_selection.GridSearchCV(self.model, self.model.HP_space)
+
+    
+
 
