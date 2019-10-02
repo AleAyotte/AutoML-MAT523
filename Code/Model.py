@@ -20,7 +20,7 @@ class Model:
         :param HP_Dict: Dictionary containing all hyperparameters of the model
 
         """
-        HP_space = HP_Dict
+        self.HP_space = HP_Dict
 
 
     def train(self, X_train, t_train):
@@ -81,7 +81,7 @@ class SVM(Model):
         :param coef0: Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
         """
 
-        model_frame = sk.svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
+        self.model_frame = sk.svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
         super().__init__({'C':C, 'kernel':kernel, 'degree':degree, 'gamma':gamma, 'coef0':coef0})
 
 
@@ -140,7 +140,7 @@ class MLP(Model):
         :param beta_2: Exponential decay rate for estimates of second moment vector in adam, should be in [0, 1)
         """
 
-        model_frame = sk.neural_network.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
+        self.model_frame = sk.neural_network.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
                                                 alpha=alpha, batch_size=batch_size,learning_rate=learning_rate, learning_rate_init=learning_rate_init,
                                                 power_t=power_t, max_iter=max_iter, momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
