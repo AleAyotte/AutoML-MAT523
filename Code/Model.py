@@ -8,7 +8,9 @@
 """
 
 import numpy as np
-import sklearn as sk
+import sklearn.svm as svm
+import sklearn.neural_network as nn
+import matplotlib.pyplot as plt
 
 class Model:
 
@@ -58,9 +60,36 @@ class Model:
 
         """
         predictions = self.predict(X)
+
         diff = t - predictions
 
         return ((diff == 0).sum())/len(diff) # (Nb of good predictions / nb of predictions)
+
+    def plot_data(self, data, classes):
+
+        """
+
+        Plot data points and spaces of separation done by the model for 2D cases only.
+
+        :param data: Nx2 numpy array of observations {N : nb of obs}
+        :param classes: Classes associate with each data point.
+        """
+
+        if data.shape[1] != 2:
+            raise Exception('Method only available for 2D plotting (two dimensions datasets')
+
+        else :
+            ix = np.arange(data[:, 0].min(), data[:, 0].max(), 0.01)
+            iy = np.arange(data[:, 1].min(), data[:, 1].max(), 0.01)
+            iX, iY = np.meshgrid(ix, iy)
+            x_vis = np.hstack([iX.reshape((-1, 1)), iY.reshape((-1, 1))])
+            contour_out = self.predict(x_vis)
+            contour_out = contour_out.reshape(iX.shape)
+
+            plt.contourf(iX, iY, contour_out)
+            plt.scatter(data[:, 0], data[:, 1], s=105, c=classes, edgecolors='b')
+            plt.title('Accuracy on test : {} %'.format(self.accuracy(data,classes)*100))
+            plt.show()
 
 
 
@@ -82,7 +111,7 @@ class SVM(Model):
         :param coef0: Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
         """
 
-        self.model_frame = sk.svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
+        self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
             super().__init__({'C':C, 'kernel':kernel, 'gamma':gamma})
@@ -155,7 +184,7 @@ class MLP(Model):
         :param beta_2: Exponential decay rate for estimates of second moment vector in adam, should be in [0, 1)
         """
 
-        self.model_frame = sk.neural_network.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
+        self.model_frame = nn.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
                                                 alpha=alpha, batch_size=batch_size,learning_rate=learning_rate, learning_rate_init=learning_rate_init,
                                                 power_t=power_t, max_iter=max_iter, momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
@@ -195,4 +224,3 @@ class MLP(Model):
         """
 
         return self.model_frame.predict(X)
-
