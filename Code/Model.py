@@ -35,7 +35,7 @@ class Model:
 
         """
 
-        return NotImplementedError
+        raise NotImplementedError
 
 
     def predict(self, X):
@@ -47,7 +47,7 @@ class Model:
         :return: Nx1 numpy array of classes predicted for each observation
         """
 
-        return NotImplementedError
+        raise NotImplementedError
 
     def accuracy(self, X, t):
 
@@ -71,18 +71,33 @@ class SVM(Model):
         """
         Class that generates a support vector machine
 
+        Some hyperparameters are conditional to others!
         Take a look at https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC for
         more informations on hyperparameters
 
         :param C: Penalty parameter C of the error term
-        :param kernel: Kernel type to be used in the algorithm. It must be one of ‘linear’, ‘poly’, ‘rbf’, ‘sigmoid’, ‘precomputed’ or a callable
+        :param kernel: Kernel type to be used in the algorithm. It must be one of ‘linear’, ‘poly’, ‘rbf’ or ‘sigmoid’
         :param degree: Degree of the polynomial kernel function (‘poly’). Ignored by all other kernels
         :param gamma: Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’
         :param coef0: Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
         """
 
         self.model_frame = sk.svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
-        super().__init__({'C':C, 'kernel':kernel, 'degree':degree, 'gamma':gamma, 'coef0':coef0})
+
+        if kernel == 'rbf':
+            super().__init__({'C':C, 'kernel':kernel, 'gamma':gamma})
+
+        elif kernel == 'linear':
+            super().__init__({'C':C, 'kernel':kernel})
+
+        elif kernel == 'poly':
+            super().__init__({'C': C, 'kernel': kernel, 'degree':degree, 'gamma': gamma, 'coef0':coef0})
+
+        elif kernel == 'sigmoid':
+            super().__init__({'C': C, 'kernel': kernel, 'gamma': gamma, 'coef0': coef0})
+
+        else:
+            raise Exception('No such kernel ("{}") implemented'.format(kernel))
 
 
     def train(self, X_train, t_train):
@@ -144,31 +159,40 @@ class MLP(Model):
                                                 alpha=alpha, batch_size=batch_size,learning_rate=learning_rate, learning_rate_init=learning_rate_init,
                                                 power_t=power_t, max_iter=max_iter, momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
-        super().__init__({'hidden_layer_sizes':hidden_layer_sizes, 'activation':activation, 'solver':solver, 'alpha':alpha,
-                          'batch_size':batch_size, 'learning_rate':learning_rate, 'power_t':power_t, 'max_iter':max_iter,
-                          'momentum':momentum, 'beta_1':beta_1, 'beta_2':beta_2})
 
-        def train(self, X_train, t_train):
+        if solver == 'adam':
+            super().__init__(
+                {'hidden_layer_sizes': hidden_layer_sizes, 'activation': activation, 'solver': solver, 'alpha': alpha,
+                 'batch_size': batch_size, 'learning_rare_init':learning_rate_init, 'beta_1': beta_1, 'beta_2': beta_2})
 
-            """
-            Train our model
+        elif solver == 'sgd':
+            super().__init__({'hidden_layer_sizes':hidden_layer_sizes, 'activation':activation, 'solver':solver, 'alpha':alpha,
+                              'batch_size':batch_size, 'learning_rate':learning_rate, 'learning_rate_init':learning_rate_init,
+                              'power_t':power_t,'momentum':momentum})
 
-            :param X_train: NxD numpy array of the observations of the training set
-            :param t_train: Nx1 numpy array classes associated with each observations in the training set
-            """
+        elif solver == 'lbfgs':
+            super().__init__({'hidden_layer_sizes': hidden_layer_sizes, 'activation': activation, 'solver': solver, 'alpha': alpha})
 
-            self.model_frame.fit(X_train, t_train)
+    def train(self, X_train, t_train):
 
+        """
+        Train our model
 
-        def predict(self, X):
+        :param X_train: NxD numpy array of the observations of the training set
+        :param t_train: Nx1 numpy array classes associated with each observations in the training set
+        """
 
-            """
-            Predict classes for our observations in the input array X
+        self.model_frame.fit(X_train, t_train)
 
-            :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
-            :return: Nx1 numpy array classes predicted for each observation
+    def predict(self, X):
 
-            """
+        """
+        Predict classes for our observations in the input array X
 
-            return self.model_frame.predict(X)
+        :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :return: Nx1 numpy array classes predicted for each observation
+
+        """
+
+        return self.model_frame.predict(X)
 
