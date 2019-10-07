@@ -3,7 +3,7 @@
     @Author:            Nicolas Raymond
     @Creation Date:     01/10/2019
     @Last modification: 01/10/2019
-    @Description:       This file provide all functions linked to hyperparameters optimization methods
+    @Description:       This file provides all functions linked to hyperparameters optimization methods
 """
 
 import sklearn as sk
