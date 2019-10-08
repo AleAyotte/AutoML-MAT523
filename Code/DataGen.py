@@ -3,7 +3,7 @@
     @Author:            Alexandre Ayotte
     @Creation Date:     29/09/2019
     @Last modification: 29/09/2019
-    @Description:       This program generates randoms data for toys problems that we want to solve with autoML methods
+    @Description:       This program generates randoms data for toy problems that we want to solve with autoML methods
 """
 
 from sklearn.datasets import make_moons
@@ -71,7 +71,7 @@ class DataGenerator:
         features = np.vstack([self.polar_to_cart(radius, angle)]).T
         return features, labels.astype(dtype='int32')
 
-    def generate_data(self, noise, num_class=2):
+    def generates_data(self, noise=0, num_class=2):
         """
         Generate random training and testing sample according to the model name
 
