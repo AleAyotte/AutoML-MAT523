@@ -65,9 +65,10 @@ class HPtuner:
     def grid_search_sklearn(self, X, t):
 
         """
-        Build a GridSearchCV sklearn object based on our model and his hyperparameters' space
+        Tune our model with grid search method according to hyperparameters' space
 
-        :return: Change our model for a GridSearchCV
+        :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
+        :param X: Nx1 numpy array of target values associated with each observation
         """
 
         # We find the selection of best hyperparameters according to grid_search
@@ -78,8 +79,6 @@ class HPtuner:
         self.model.model_frame = gs_cv.best_estimator_
         self.model.HP_space = gs_cv.best_params_
 
-
-    
 
     def random_search_sklearn(self, n_iter):
 
