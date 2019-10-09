@@ -73,7 +73,7 @@ class DataGenerator:
 
     def generates_data(self, noise=0, num_class=2):
         """
-        Generate random training and testing sample according to the model name
+        Generates random training and testing sample according to the model name
 
         :param noise: The standard deviation of the Gaussian noise added to the data
         :param num_class: Number of classes, only for the nSpiral model
