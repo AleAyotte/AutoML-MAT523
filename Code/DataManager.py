@@ -71,7 +71,7 @@ class DataGenerator:
         features = np.vstack([self.polar_to_cart(radius, angle)]).T
         return features, labels.astype(dtype='int32')
 
-    def generates_data(self, noise=0, num_class=2):
+    def generate_data(self, noise=0, num_class=2):
         """
         Generates random training and testing sample according to the model name
 
