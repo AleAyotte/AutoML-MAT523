@@ -62,7 +62,7 @@ class HPtuner:
             raise Exception('No such hyperparameter "{}" in our model'.format(hyperparameter))
 
 
-    def grid_search_sklearn(self):
+    def grid_search_sklearn(self, X, t):
 
         """
         Build a GridSearchCV sklearn object based on our model and his hyperparameters' space
@@ -70,7 +70,14 @@ class HPtuner:
         :return: Change our model for a GridSearchCV
         """
 
-        self.model = sk.model_selection.GridSearchCV(self.model, self.model.HP_space)
+        # We find the selection of best hyperparameters according to grid_search
+        gs_cv = sk.model_selection.GridSearchCV(self.model.model_frame, self.model.HP_space)
+        gs_cv.fit(X,t)
+
+        # We apply changes to original model
+        self.model.model_frame = gs_cv.best_estimator_
+        self.model.HP_space = gs_cv.best_params_
+
 
     
 
@@ -86,12 +93,14 @@ class HPtuner:
         self.model = sk.model_selection.RandomizedSearchCV(self.model, self.model.HP_space, n_iter)
 
 
-    def tune(self, n_iter = 10):
+    def tune(self, X, t, n_iter = 10):
 
         """
         Optimize model's hyperparameters with the method specified at the ignition of our tuner
 
-        :param nb_iter: Number of iteration to do. Only considered if method is 'random_search'
+        :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
+        :param X: Nx1 numpy array of target values associated with each observation
+        :param n_iter: Number of iteration to do. Only considered if method is 'random_search'
         """
 
         if self.method == 'grid_search':
