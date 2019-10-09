@@ -2,7 +2,7 @@
     @file:              HPtuner.py
     @Author:            Nicolas Raymond
     @Creation Date:     01/10/2019
-    @Last modification: 01/10/2019
+    @Last modification: 09/10/2019
     @Description:       This file provides all functions linked to hyperparameters optimization methods
 """
 
@@ -80,16 +80,24 @@ class HPtuner:
         self.model.HP_space = gs_cv.best_params_
 
 
-    def random_search_sklearn(self, n_iter):
+    def random_search_sklearn(self, X, t, n_iter):
 
         """
-        Build a RandomizedSearchCV sklearn object based on our model and his hyperparameters' space
+        Tune our model with random search method according to hyperparameters' space
 
-        :return: Change our model for a RandomizedSearchCV
-
+        :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
+        :param X: Nx1 numpy array of target values associated with each observation
+        :param n_iter: Number of iterations to do.
         """
 
-        self.model = sk.model_selection.RandomizedSearchCV(self.model, self.model.HP_space, n_iter)
+        # We find the selection of best hyperparameters according to random_search
+        rs_cv = sk.model_selection.RandomizedSearchCV(self.model.model_frame, self.model.HP_space, n_iter)
+        rs_cv.fit(X,t)
+
+        # We apply changes to original model
+        self.model.model_frame = rs_cv.best_estimator_
+        self.model.HP_space = rs_cv.best_params_
+
 
 
     def tune(self, X, t, n_iter = 10):
@@ -103,8 +111,8 @@ class HPtuner:
         """
 
         if self.method == 'grid_search':
-            self.grid_search_sklearn()
+            self.grid_search_sklearn(X,t)
 
         elif self.method == 'random_search':
-            self.random_search_sklearn(n_iter)
+            self.random_search_sklearn(X,t,n_iter)
 
