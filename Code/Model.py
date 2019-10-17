@@ -1,9 +1,9 @@
 """
-    @file:              DataGen.py
+    @file:              Model.py
     @Author:            Nicolas Raymond
     @Creation Date:     30/09/2019
-    @Last modification: 30/09/2019
-    @Description:       This program generate models of different types to use for our classification problems.
+    @Last modification: 08/10/2019
+    @Description:       This program generates models of different types to use for our classification problems.
 
 """
 
@@ -17,7 +17,7 @@ class Model:
     def __init__(self, HP_Dict):
 
         """
-        Class that generate a model to solve a classification problem
+        Class that generates a model to solve a classification problem
 
         :param HP_Dict: Dictionary containing all hyperparameters of the model
 
@@ -25,12 +25,12 @@ class Model:
         self.HP_space = HP_Dict
 
 
-    def train(self, X_train, t_train):
+    def fit(self, X_train, t_train):
 
         """
         Train our model
 
-        Note that it wil be override by the children classes
+        Note that it will be override by the children's classes
 
         :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t_train: Nx1 numpy array of classes associated with each observation
@@ -51,7 +51,7 @@ class Model:
 
         raise NotImplementedError
 
-    def accuracy(self, X, t):
+    def score(self, X, t):
 
         """
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
@@ -88,14 +88,14 @@ class Model:
 
             plt.contourf(iX, iY, contour_out)
             plt.scatter(data[:, 0], data[:, 1], s=105, c=classes, edgecolors='b')
-            plt.title('Accuracy on test : {} %'.format(self.accuracy(data,classes)*100))
+            plt.title('Accuracy on test : {} %'.format(self.score(data,classes)*100))
             plt.show()
 
 
 
 class SVM(Model):
 
-    def __init__(self, C=1.0, kernel="rbf", degree=3, gamma='auto_deprecated', coef0=0.0, max_iter=-1):
+    def __init__(self, C=1.0, kernel="rbf", degree=3, gamma='auto', coef0=0.0, max_iter=-1):
 
         """
         Class that generates a support vector machine
@@ -114,22 +114,22 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super().__init__({'C':C, 'kernel':kernel, 'gamma':gamma})
+            super().__init__({'C':[C], 'kernel':[kernel], 'gamma':[gamma]})
 
         elif kernel == 'linear':
-            super().__init__({'C':C, 'kernel':kernel})
+            super().__init__({'C':[C], 'kernel':[kernel]})
 
         elif kernel == 'poly':
-            super().__init__({'C': C, 'kernel': kernel, 'degree':degree, 'gamma': gamma, 'coef0':coef0})
+            super().__init__({'C':[C], 'kernel':[kernel], 'degree':[degree], 'gamma':[gamma], 'coef0':[coef0]})
 
         elif kernel == 'sigmoid':
-            super().__init__({'C': C, 'kernel': kernel, 'gamma': gamma, 'coef0': coef0})
+            super().__init__({'C':[C], 'kernel':[kernel], 'gamma':[gamma], 'coef0':[coef0]})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
 
 
-    def train(self, X_train, t_train):
+    def fit(self, X_train, t_train):
 
         """
         Train our model
@@ -162,7 +162,7 @@ class MLP(Model):
 
         """
 
-        Class that generate a Multi-layer Perceptron classifier.
+        Class that generates a Multi-layer Perceptron classifier.
 
         This model optimizes the log-loss function using LBFGS or stochastic gradient descent.
 
@@ -191,18 +191,18 @@ class MLP(Model):
 
         if solver == 'adam':
             super().__init__(
-                {'hidden_layer_sizes': hidden_layer_sizes, 'activation': activation, 'solver': solver, 'alpha': alpha,
-                 'batch_size': batch_size, 'learning_rare_init':learning_rate_init, 'beta_1': beta_1, 'beta_2': beta_2})
+                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation], 'solver': [solver], 'alpha': [alpha],
+                 'batch_size': [batch_size], 'learning_rare_init':[learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
 
         elif solver == 'sgd':
-            super().__init__({'hidden_layer_sizes':hidden_layer_sizes, 'activation':activation, 'solver':solver, 'alpha':alpha,
-                              'batch_size':batch_size, 'learning_rate':learning_rate, 'learning_rate_init':learning_rate_init,
-                              'power_t':power_t,'momentum':momentum})
+            super().__init__({'hidden_layer_sizes':[hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha],
+                              'batch_size':[batch_size], 'learning_rate':[learning_rate], 'learning_rate_init':[learning_rate_init],
+                              'power_t':[power_t],'momentum':[momentum]})
 
         elif solver == 'lbfgs':
-            super().__init__({'hidden_layer_sizes': hidden_layer_sizes, 'activation': activation, 'solver': solver, 'alpha': alpha})
+            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha]})
 
-    def train(self, X_train, t_train):
+    def fit(self, X_train, t_train):
 
         """
         Train our model
