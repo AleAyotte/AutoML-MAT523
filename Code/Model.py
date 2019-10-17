@@ -192,7 +192,7 @@ class MLP(Model):
         if solver == 'adam':
             super().__init__(
                 {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation], 'solver': [solver], 'alpha': [alpha],
-                 'batch_size': [batch_size], 'learning_rare_init':[learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
+                 'batch_size': [batch_size], 'learning_rate_init':[learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
 
         elif solver == 'sgd':
             super().__init__({'hidden_layer_sizes':[hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha],
