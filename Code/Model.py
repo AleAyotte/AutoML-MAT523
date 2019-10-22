@@ -12,6 +12,7 @@ import sklearn.svm as svm
 import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
 
+
 class Model:
 
     def __init__(self, HP_Dict):
@@ -19,11 +20,10 @@ class Model:
         """
         Class that generates a model to solve a classification problem
 
-        :param HP_Dict: Dictionary containing all hyperparameters of the model
+        :param HP_Dict: Dictionary containing all hyper-parameters of the model
 
         """
         self.HP_space = HP_Dict
-
 
     def fit(self, X_train, t_train):
 
@@ -38,7 +38,6 @@ class Model:
         """
 
         raise NotImplementedError
-
 
     def predict(self, X):
 
@@ -63,7 +62,7 @@ class Model:
 
         diff = t - predictions
 
-        return ((diff == 0).sum())/len(diff) # (Nb of good predictions / nb of predictions)
+        return ((diff == 0).sum())/len(diff)  # (Nb of good predictions / nb of predictions)
 
     def plot_data(self, data, classes):
 
@@ -78,7 +77,7 @@ class Model:
         if data.shape[1] != 2:
             raise Exception('Method only available for 2D plotting (two dimensions datasets')
 
-        else :
+        else:
             ix = np.arange(data[:, 0].min(), data[:, 0].max(), 0.01)
             iy = np.arange(data[:, 1].min(), data[:, 1].max(), 0.01)
             iX, iY = np.meshgrid(ix, iy)
@@ -88,9 +87,8 @@ class Model:
 
             plt.contourf(iX, iY, contour_out)
             plt.scatter(data[:, 0], data[:, 1], s=105, c=classes, edgecolors='b')
-            plt.title('Accuracy on test : {} %'.format(self.score(data,classes)*100))
+            plt.title('Accuracy on test : {} %'.format(self.score(data, classes)*100))
             plt.show()
-
 
 
 class SVM(Model):
@@ -100,9 +98,9 @@ class SVM(Model):
         """
         Class that generates a support vector machine
 
-        Some hyperparameters are conditional to others!
+        Some hyper-parameters are conditional to others!
         Take a look at https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC for
-        more informations on hyperparameters
+        more information on hyper-parameters
 
         :param C: Penalty parameter C of the error term
         :param kernel: Kernel type to be used in the algorithm. It must be one of ‘linear’, ‘poly’, ‘rbf’ or ‘sigmoid’
@@ -114,20 +112,20 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super().__init__({'C':[C], 'kernel':[kernel], 'gamma':[gamma]})
+            super(SVM, self).__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma]})
 
         elif kernel == 'linear':
-            super().__init__({'C':[C], 'kernel':[kernel]})
+            super(SVM, self).__init__({'C': [C], 'kernel': [kernel]})
 
         elif kernel == 'poly':
-            super().__init__({'C':[C], 'kernel':[kernel], 'degree':[degree], 'gamma':[gamma], 'coef0':[coef0]})
+            super(SVM, self).__init__({'C': [C], 'kernel': [kernel], 'degree': [degree],
+                                       'gamma': [gamma], 'coef0': [coef0]})
 
         elif kernel == 'sigmoid':
-            super().__init__({'C':[C], 'kernel':[kernel], 'gamma':[gamma], 'coef0':[coef0]})
+            super(SVM, self).__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma], 'coef0': [coef0]})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
-
 
     def fit(self, X_train, t_train):
 
@@ -139,7 +137,6 @@ class SVM(Model):
         """
 
         self.model_frame.fit(X_train, t_train)
-
 
     def predict(self, X):
 
@@ -157,8 +154,8 @@ class SVM(Model):
 class MLP(Model):
 
     def __init__(self, hidden_layer_sizes=(100, ), activation='relu', solver='adam', alpha=0.0001, batch_size='auto',
-                 learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200, momentum=0.9, beta_1=0.9,
-                 beta_2=0.999):
+                 learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200, momentum=0.9,
+                 beta_1=0.9, beta_2=0.999):
 
         """
 
@@ -166,8 +163,8 @@ class MLP(Model):
 
         This model optimizes the log-loss function using LBFGS or stochastic gradient descent.
 
-        Some hyperparameters are conditional to others!
-        For more informations take a look at :
+        Some hyper-parameters are conditional to others!
+        For more information take a look at :
         https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html#sklearn.neural_network.MLPClassifier
 
         :param hidden_layer_sizes: The ith element represents the number of neurons in the ith hidden layer
@@ -185,22 +182,25 @@ class MLP(Model):
         """
 
         self.model_frame = nn.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
-                                                alpha=alpha, batch_size=batch_size,learning_rate=learning_rate, learning_rate_init=learning_rate_init,
-                                                power_t=power_t, max_iter=max_iter, momentum=momentum, beta_1=beta_1, beta_2=beta_2)
-
+                                            alpha=alpha, batch_size=batch_size, learning_rate=learning_rate,
+                                            learning_rate_init=learning_rate_init, power_t=power_t, max_iter=max_iter,
+                                            momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
         if solver == 'adam':
-            super().__init__(
-                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation], 'solver': [solver], 'alpha': [alpha],
-                 'batch_size': [batch_size], 'learning_rate_init':[learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
+            super(MLP, self).__init__(
+                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
+                 'solver': [solver], 'alpha': [alpha], 'batch_size': [batch_size],
+                 'learning_rate_init': [learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
 
         elif solver == 'sgd':
-            super().__init__({'hidden_layer_sizes':[hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha],
-                              'batch_size':[batch_size], 'learning_rate':[learning_rate], 'learning_rate_init':[learning_rate_init],
-                              'power_t':[power_t],'momentum':[momentum]})
+            super(MLP, self).__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
+                                       'solver': [solver], 'alpha': [alpha], 'batch_size': [batch_size],
+                                       'learning_rate': [learning_rate], 'learning_rate_init': [learning_rate_init],
+                                       'power_t': [power_t], 'momentum': [momentum]})
 
         elif solver == 'lbfgs':
-            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha]})
+            super(MLP, self).__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
+                                       'solver': [solver], 'alpha': [alpha]})
 
     def fit(self, X_train, t_train):
 
