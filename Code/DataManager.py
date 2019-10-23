@@ -12,6 +12,9 @@ import numpy as np
 import math
 import copy
 import matplotlib.pyplot as plt
+import torchvision
+import torchvision.transforms as transforms
+import torch.utils.data as utils
 
 
 class DataGenerator:
@@ -69,6 +72,7 @@ class DataGenerator:
         angle = angle + copy.copy(radius)
         radius += 1
         features = np.vstack([self.polar_to_cart(radius, angle)]).T
+
         return features, labels.astype(dtype='int32')
 
     def generate_data(self, noise=0, num_class=2):
@@ -113,6 +117,49 @@ def create_dataloader(features, labels, b_size):
     dt_load = utils.DataLoader(dt, batch_size=b_size, shuffle=True, drop_last=True)
 
     return dt_load
+
+
+def dataset_to_loader(dataset, b_size=12, shuffle=False):
+    """
+    Transform a torch dataset into a torch dataloader who provide an iterable over the dataset
+    
+    :param dataset: A torch dataset
+    :param b_size: The batch size
+    :param shuffle: If the dataset is shuffle at each epoch
+    :return: A torch data_loader that contain the features and the labels.
+    """
+    data_loader = utils.DataLoader(dataset, batch_size=b_size, shuffle=shuffle, drop_last=True)
+
+    return data_loader
+
+
+def load_cifar10():
+    """
+    Load the CIFAR10 dataset using pytorch
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    """
+
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    testset = torchvision.datasets.CIFAR10(root='./data', train=Test, download=True, transform=transform)
+
+    return trainset, testset
+
+
+def load_mnist():
+    """
+    Load the MNIST dataset using pytorch
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    """
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    testset = torchvision.datasets.MNIST(root='./data', train=Test, download=True, transform=transform)
+
+    return trainset, testset
 
 
 def plot_data(data, target):
