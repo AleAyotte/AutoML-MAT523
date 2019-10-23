@@ -373,6 +373,23 @@ class CNN(Model, torch.nn.Module):
         x = self.out_layer(x)
         return x
 
+    @staticmethod
+    def init_weights(m):
+
+        """
+        Initialize the weights of the fully connected layer and convolutional layer with Xavier normal initialization
+        and Kamming normal initialization respectively.
+
+        :param m:
+        :return:
+        """
+
+        if type(m) == torch.nn.Linear:
+            torch.nn.init.xavier_normal(m.weight)
+            m.bias.data.fill_(0.01)
+        elif type(m) == torch.nn.Conv2d:
+            torch.nn.init.kaiming_normal(m.weight)
+
     def fit(self, X_train, t_train):
 
         """
@@ -385,7 +402,7 @@ class CNN(Model, torch.nn.Module):
 
         """
 
-        raise NotImplementedError
+        
 
     def predict(self, X):
 
