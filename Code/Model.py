@@ -28,24 +28,19 @@ class HPtype(Enum):
 
 class Hyperparameter:
 
-    def __init__(self, name, type, values=None, domain=None, distribution=None):
+    def __init__(self, name, type, value=None):
         """
 
         Class that defines an hyper-parameter
 
         :param name: Name of the hyper-parameter
         :param type: One type out of HPtype (DISCRETE, CONTINUOUS, CATEGORICAL)
-        :param values: Tuple of values that the hyper-parameter can take
-        :param domain: Tuple containing start and end of the domain
-        :param distribution: Statistical distibution associated to hyper-parameter
+        :param value: List with the value of the hyper-parameter
 
         """
-
         self.name = name
         self.type = type
-        self.values = values
-        self.domain = domain
-        self.distribution = distribution
+        self.value = value
 
         if self.type == HPtype.DISCRETE:
             self.type_name = 'discrete'

@@ -3,10 +3,14 @@
     @Author:            Nicolas Raymond
     @Creation Date:     01/10/2019
     @Last modification: 09/10/2019
-    @Description:       This file provides all functions linked to hyperparameters optimization methods
+    @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
 import sklearn as sk
+from hyperopt import hp
+
+
+method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
 
 
 class HPtuner:
@@ -16,10 +20,10 @@ class HPtuner:
         """
         Class that generate an automatic hyper-parameter tuner for the model specified
 
-        :param model: Model on which we want to optimize hyperparameters {SVM, MLP} # Work in progress
+        :param model: Model on which we want to optimize hyper-parameters {SVM, MLP} # Work in progress
         :param method: Name of the method of optimization to use {'grid_search', 'random_search'} # Work in progress
         """
-        if method not in ['grid_search', 'random_search']:
+        if method not in method_list:
             raise Exception('No such method "{}" implemented for HPtuner'.format(method))
 
         self.model = model
@@ -36,12 +40,12 @@ class HPtuner:
                                      associate to each of them. Search space must be a list of values
                                      or a statistical distribution from scipy stats.
 
-        :return: Change hyperparameter space in our model attribute
+        :return: Change hyper-parameter space in our model attribute
 
         """
 
-        for hp in hp_search_space_dict:
-            self.set_single_hp_space(hp, hp_search_space_dict[hp])
+        for hyperparam in hp_search_space_dict:
+            self.set_single_hp_space(hyperparam, hp_search_space_dict[hyperparam])
 
     def set_single_hp_space(self, hyperparameter, space):
 
@@ -64,7 +68,7 @@ class HPtuner:
     def grid_search_sklearn(self, X, t):
 
         """
-        Tune our model with grid search method according to hyperparameters' space
+        Tune our model with grid search method according to hyper-parameters' space
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
@@ -85,7 +89,7 @@ class HPtuner:
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
-        :param n_iter: Number of iterations to do.
+        :param n_iter: Number of iterations to do
         """
 
         # We find the selection of best hyperparameters according to random_search
@@ -112,3 +116,27 @@ class HPtuner:
         elif self.method == 'random_search':
             self.random_search_sklearn(X, t, n_iter)
 
+    @staticmethod
+    def search_space_ignition(method, model):
+
+        """
+        Define a correct search space format according to optimization method
+
+        :return: Search space frame for our tuner
+
+        """
+        space = None
+
+        if method == 'grid_search':
+            space = {}
+
+            for hyperparam in model.HP_space:
+                space[hyperparam] = model.HP_space[hyperparam].value
+
+        elif method == 'random_search' or method == 'tpe':
+            space = []
+
+            for hyperparam in model.HP_space:
+                space.append(hp.choice(hyperparam, model.HP_space[hyperparam]))
+
+        return space
