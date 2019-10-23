@@ -396,4 +396,6 @@ class CNN(Model, torch.nn.Module):
         :return: Nx1 numpy array of classes predicted for each observation
         """
 
-        raise NotImplementedError
+        with torch.no_grad():
+            out = self.soft(self(X)).numpy()
+        return np.argmax(out, axis=1)
