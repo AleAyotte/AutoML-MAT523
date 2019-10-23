@@ -156,18 +156,26 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super(SVM, self).__init__({'C': Hyperparameter('C',), 'kernel': (HPtype.CATEGORICAL, [kernel]),
-                                       'gamma': (HPtype.CONTINUOUS, [gamma])})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel]),
+                                       'gamma': Hyperparameter('gamma', HPtype.CONTINUOUS, [gamma])})
 
         elif kernel == 'linear':
-            super(SVM, self).__init__({'C': (HPtype.CONTINUOUS, [C]), 'kernel': (HPtype.CATEGORICAL, [kernel])})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel])})
 
         elif kernel == 'poly':
-            super(SVM, self).__init__({'C': (HPtype.CONTINUOUS, [C]), 'kernel': (HPtype.CATEGORICAL, [kernel]),
-                                       'degree': (HPtype.DISCRETE,[degree]), 'gamma': [gamma], 'coef0': [coef0]})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel]),
+                                       'degree': Hyperparameter('degree', HPtype.DISCRETE, [degree]),
+                                       'gamma': Hyperparameter('gamma', HPtype.CONTINUOUS, [gamma]),
+                                       'coef0': Hyperparameter('coef0', HPtype.CONTINUOUS, [coef0])})
 
         elif kernel == 'sigmoid':
-            super(SVM, self).__init__({'C': (HPtype.CONTINUOUS, [C]), 'kernel': (HPtype.CATEGORICAL, [kernel]), 'gamma': [gamma], 'coef0': [coef0]})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel]),
+                                       'gamma': Hyperparameter('gamma', HPtype.CONTINUOUS, [gamma]),
+                                       'coef0': Hyperparameter('coef0', HPtype.CONTINUOUS, [coef0])})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
