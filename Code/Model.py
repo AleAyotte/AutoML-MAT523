@@ -261,6 +261,7 @@ class CNN(Model, torch.nn.Module):
         self.cnn_layer = torch.nn.ModuleList()
         self.fc_layer = torch.nn.ModuleList()
         self.out_layer = None
+        self.pool = pool_list
 
         if activation == "ReLU":
             self.activation = torch.nn.ReLU()
@@ -348,6 +349,29 @@ class CNN(Model, torch.nn.Module):
             out_size = np.ceil([out_size[0] / pool[1], out_size[1] / pool[2]])
 
         return out_size.astype(int)
+
+    def forward(self, x):
+
+        """
+        Define the forward pass of the neural network
+
+        :param x: Input tensor of size BxD where B is the Batch size and D is the features dimension
+        :return: Output tensor of size num_class x 1.
+        """
+
+        for i, l in enumerate(self.cnn_layer):
+            x = self.activation(self.cnn_layer[i](x) + l(x))
+
+            if self.pool[i, 0] == 1:
+                x = F.max_pool2d(x, self.pool[i, 1], self.pool[i, 2])
+
+        x = x.view(-1, self.num_flat_features(x))
+
+        for i, l in enumerate(self.fc_layer):
+            x = self.activaton(self.fc_layer[i](x) + l(x))
+
+        x = self.out_layer(x)
+        return x
 
     def fit(self, X_train, t_train):
 
