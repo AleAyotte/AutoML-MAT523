@@ -11,6 +11,10 @@ import numpy as np
 import sklearn.svm as svm
 import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
+import torch
+import torch.nn.functional as F
+import torch.utils.data as utils
+
 
 class Model:
 
@@ -23,7 +27,6 @@ class Model:
 
         """
         self.HP_space = HP_Dict
-
 
     def fit(self, X_train, t_train):
 
@@ -38,7 +41,6 @@ class Model:
         """
 
         raise NotImplementedError
-
 
     def predict(self, X):
 
@@ -92,7 +94,6 @@ class Model:
             plt.show()
 
 
-
 class SVM(Model):
 
     def __init__(self, C=1.0, kernel="rbf", degree=3, gamma='auto', coef0=0.0, max_iter=-1):
@@ -128,7 +129,6 @@ class SVM(Model):
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
 
-
     def fit(self, X_train, t_train):
 
         """
@@ -139,7 +139,6 @@ class SVM(Model):
         """
 
         self.model_frame.fit(X_train, t_train)
-
 
     def predict(self, X):
 
@@ -185,9 +184,9 @@ class MLP(Model):
         """
 
         self.model_frame = nn.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
-                                                alpha=alpha, batch_size=batch_size,learning_rate=learning_rate, learning_rate_init=learning_rate_init,
-                                                power_t=power_t, max_iter=max_iter, momentum=momentum, beta_1=beta_1, beta_2=beta_2)
-
+                                            alpha=alpha, batch_size=batch_size,learning_rate=learning_rate,
+                                            learning_rate_init=learning_rate_init, power_t=power_t, max_iter=max_iter,
+                                            momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
         if solver == 'adam':
             super().__init__(
@@ -195,9 +194,9 @@ class MLP(Model):
                  'batch_size': [batch_size], 'learning_rate_init':[learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
 
         elif solver == 'sgd':
-            super().__init__({'hidden_layer_sizes':[hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha],
-                              'batch_size':[batch_size], 'learning_rate':[learning_rate], 'learning_rate_init':[learning_rate_init],
-                              'power_t':[power_t],'momentum':[momentum]})
+            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation':[activation], 'solver': [solver],
+                              'alpha': [alpha], 'batch_size': [batch_size], 'learning_rate': [learning_rate],
+                              'learning_rate_init': [learning_rate_init], 'power_t': [power_t], 'momentum': [momentum]})
 
         elif solver == 'lbfgs':
             super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha]})
@@ -224,3 +223,47 @@ class MLP(Model):
         """
 
         return self.model_frame.predict(X)
+
+
+class CNN(Model, torch.nn.Module):
+
+    def __init__(self, num_classes, fc_nodes, conv_nodes, input_dim=None, lr=0.001, alpha=0.0, b_size=15, num_epoch=800):
+
+        """
+
+        :param num_classes:
+        :param fc_nodes:
+        :param conv_nodes:
+        :param input_dim:
+        :param lr:
+        :param alpha:
+        :param b_size:
+        :param num_epoch:
+        """
+
+        super(CNN, self).__init__()
+
+    def fit(self, X_train, t_train):
+
+        """
+        Train our model
+
+        Note that it will be override by the children's classes
+
+        :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t_train: Nx1 numpy array of classes associated with each observation
+
+        """
+
+        raise NotImplementedError
+
+    def predict(self, X):
+
+        """
+        Predict classes for our observations in the input array X
+
+        :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :return: Nx1 numpy array of classes predicted for each observation
+        """
+
+        raise NotImplementedError
