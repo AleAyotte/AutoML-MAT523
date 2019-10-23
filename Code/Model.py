@@ -11,6 +11,19 @@ import numpy as np
 import sklearn.svm as svm
 import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
+from enum import Enum, unique
+
+
+@unique
+class HPtype(Enum):
+
+    """
+    Class containing possible types of hyper-parameters
+
+    """
+    DISCRETE = 1
+    CONTINUOUS = 2
+    CATEGORICAL = 3
 
 
 class Model:
@@ -75,7 +88,7 @@ class Model:
         """
 
         if data.shape[1] != 2:
-            raise Exception('Method only available for 2D plotting (two dimensions datasets')
+            raise Exception('Method only available for 2D plotting (two dimensions datasets)')
 
         else:
             ix = np.arange(data[:, 0].min(), data[:, 0].max(), 0.01)
@@ -224,3 +237,4 @@ class MLP(Model):
         """
 
         return self.model_frame.predict(X)
+
