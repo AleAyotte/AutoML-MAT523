@@ -98,6 +98,23 @@ class DataGenerator:
         return x_train, t_train, x_test, t_test
 
 
+def create_dataloader(features, labels, b_size):
+    """
+    Transform a n dimensional numpy array of features and a numpy array of labels into ONE data loader
+
+    :param features: A n dimensional numpy array that contain features of each data points
+    :param labels: A numpy array that represent the correspondent labels of each data points
+    :param b_size: Batch size as integer
+    :return: A dataloader that contain
+    """
+    tensor_x = torch.tensor(features, dtype=torch.float)
+    tensor_y = torch.tensor(labels, dtype=torch.long)
+    dt = utils.TensorDataset(tensor_x, tensor_y)
+    dt_load = utils.DataLoader(dt, batch_size=b_size, shuffle=True, drop_last=True)
+
+    return dt_load
+
+
 def plot_data(data, target):
     """
     Show a two dimensional dataset in a chart.
