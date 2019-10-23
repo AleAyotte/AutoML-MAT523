@@ -25,6 +25,27 @@ class HPtype(Enum):
     CONTINUOUS = 2
     CATEGORICAL = 3
 
+class Hyperparameter:
+
+    def __init__(self, name, nature, values = None, domain = None, distribution = None):
+        """
+
+        Class that defines an hyper-parameter
+
+        :param name: Name of the hyper-parameter
+        :param nature: One type out of HPtype (DISCRETE, CONTINUOUS, CATEGORICAL)
+        :param values: Tuple of values that the hyper-parameter can take
+        :param domain: Tuple containing start and end of the domain
+        :param distribution: Statistical distibution associated to hyper-parameter
+
+        """
+
+        self.name = name
+        self.nature = nature
+        self.values = values
+        self.domain = domain
+        self.distribution = distribution
+
 
 class Model:
 
@@ -125,17 +146,18 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super(SVM, self).__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma]})
+            super(SVM, self).__init__({'C': {'type':HPtype.CONTINUOUS, [C]}, 'kernel': (HPtype.CATEGORICAL, [kernel]),
+                                       'gamma': (HPtype.CONTINUOUS, [gamma])})
 
         elif kernel == 'linear':
-            super(SVM, self).__init__({'C': [C], 'kernel': [kernel]})
+            super(SVM, self).__init__({'C': (HPtype.CONTINUOUS, [C]), 'kernel': (HPtype.CATEGORICAL, [kernel])})
 
         elif kernel == 'poly':
-            super(SVM, self).__init__({'C': [C], 'kernel': [kernel], 'degree': [degree],
-                                       'gamma': [gamma], 'coef0': [coef0]})
+            super(SVM, self).__init__({'C': (HPtype.CONTINUOUS, [C]), 'kernel': (HPtype.CATEGORICAL, [kernel]),
+                                       'degree': (HPtype.DISCRETE,[degree]), 'gamma': [gamma], 'coef0': [coef0]})
 
         elif kernel == 'sigmoid':
-            super(SVM, self).__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma], 'coef0': [coef0]})
+            super(SVM, self).__init__({'C': (HPtype.CONTINUOUS, [C]), 'kernel': (HPtype.CATEGORICAL, [kernel]), 'gamma': [gamma], 'coef0': [coef0]})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
