@@ -12,9 +12,6 @@ import numpy as np
 import math
 import copy
 import matplotlib.pyplot as plt
-import torchvision
-import torchvision.transforms as transforms
-import torch.utils.data as utils
 
 
 class DataGenerator:
@@ -72,7 +69,6 @@ class DataGenerator:
         angle = angle + copy.copy(radius)
         radius += 1
         features = np.vstack([self.polar_to_cart(radius, angle)]).T
-
         return features, labels.astype(dtype='int32')
 
     def generate_data(self, noise=0, num_class=2):
@@ -122,7 +118,7 @@ def create_dataloader(features, labels, b_size):
 def dataset_to_loader(dataset, b_size=12, shuffle=False):
     """
     Transform a torch dataset into a torch dataloader who provide an iterable over the dataset
-    
+
     :param dataset: A torch dataset
     :param b_size: The batch size
     :param shuffle: If the dataset is shuffle at each epoch
@@ -143,7 +139,7 @@ def load_cifar10():
 
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    testset = torchvision.datasets.CIFAR10(root='./data', train=Test, download=True, transform=transform)
+    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
     return trainset, testset
 
