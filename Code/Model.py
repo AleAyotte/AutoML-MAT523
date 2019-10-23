@@ -1,8 +1,9 @@
 """
     @file:              Model.py
     @Author:            Nicolas Raymond
+                        Alexandre Ayotte
     @Creation Date:     30/09/2019
-    @Last modification: 08/10/2019
+    @Last modification: 22/10/2019
     @Description:       This program generates models of different types to use for our classification problems.
 
 """
@@ -65,7 +66,7 @@ class Model:
 
         diff = t - predictions
 
-        return ((diff == 0).sum())/len(diff) # (Nb of good predictions / nb of predictions)
+        return ((diff == 0).sum())/len(diff)  # (Nb of good predictions / nb of predictions)
 
     def plot_data(self, data, classes):
 
@@ -80,7 +81,7 @@ class Model:
         if data.shape[1] != 2:
             raise Exception('Method only available for 2D plotting (two dimensions datasets')
 
-        else :
+        else:
             ix = np.arange(data[:, 0].min(), data[:, 0].max(), 0.01)
             iy = np.arange(data[:, 1].min(), data[:, 1].max(), 0.01)
             iX, iY = np.meshgrid(ix, iy)
@@ -90,7 +91,7 @@ class Model:
 
             plt.contourf(iX, iY, contour_out)
             plt.scatter(data[:, 0], data[:, 1], s=105, c=classes, edgecolors='b')
-            plt.title('Accuracy on test : {} %'.format(self.score(data,classes)*100))
+            plt.title('Accuracy on test : {} %'.format(self.score(data, classes)*100))
             plt.show()
 
 
@@ -115,16 +116,16 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super().__init__({'C':[C], 'kernel':[kernel], 'gamma':[gamma]})
+            super().__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma]})
 
         elif kernel == 'linear':
-            super().__init__({'C':[C], 'kernel':[kernel]})
+            super().__init__({'C': [C], 'kernel': [kernel]})
 
         elif kernel == 'poly':
-            super().__init__({'C':[C], 'kernel':[kernel], 'degree':[degree], 'gamma':[gamma], 'coef0':[coef0]})
+            super().__init__({'C': [C], 'kernel': [kernel], 'degree': [degree], 'gamma': [gamma], 'coef0': [coef0]})
 
         elif kernel == 'sigmoid':
-            super().__init__({'C':[C], 'kernel':[kernel], 'gamma':[gamma], 'coef0':[coef0]})
+            super().__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma], 'coef0': [coef0]})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
@@ -156,11 +157,10 @@ class SVM(Model):
 class MLP(Model):
 
     def __init__(self, hidden_layer_sizes=(100, ), activation='relu', solver='adam', alpha=0.0001, batch_size='auto',
-                 learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200, momentum=0.9, beta_1=0.9,
-                 beta_2=0.999):
+                 learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200, momentum=0.9,
+                 beta_1=0.9, beta_2=0.999):
 
         """
-
         Class that generates a Multi-layer Perceptron classifier.
 
         This model optimizes the log-loss function using LBFGS or stochastic gradient descent.
@@ -190,16 +190,19 @@ class MLP(Model):
 
         if solver == 'adam':
             super().__init__(
-                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation], 'solver': [solver], 'alpha': [alpha],
-                 'batch_size': [batch_size], 'learning_rate_init':[learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
+                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation], 'solver': [solver],
+                 'alpha': [alpha], 'batch_size': [batch_size], 'learning_rate_init': [learning_rate_init],
+                 'beta_1': [beta_1], 'beta_2': [beta_2]})
 
         elif solver == 'sgd':
-            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation':[activation], 'solver': [solver],
-                              'alpha': [alpha], 'batch_size': [batch_size], 'learning_rate': [learning_rate],
-                              'learning_rate_init': [learning_rate_init], 'power_t': [power_t], 'momentum': [momentum]})
+            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
+                              'solver': [solver], 'alpha': [alpha], 'batch_size': [batch_size],
+                              'learning_rate': [learning_rate], 'learning_rate_init': [learning_rate_init],
+                              'power_t': [power_t], 'momentum': [momentum]})
 
         elif solver == 'lbfgs':
-            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation':[activation], 'solver':[solver], 'alpha':[alpha]})
+            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
+                              'solver': [solver], 'alpha': [alpha]})
 
     def fit(self, X_train, t_train):
 
@@ -219,29 +222,132 @@ class MLP(Model):
 
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :return: Nx1 numpy array classes predicted for each observation
-
         """
 
         return self.model_frame.predict(X)
 
 
 class CNN(Model, torch.nn.Module):
-
-    def __init__(self, num_classes, fc_nodes, conv_nodes, input_dim=None, lr=0.001, alpha=0.0, b_size=15, num_epoch=800):
+    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='ReLU', input_dim=None, lr=0.001,
+                 alpha=0.0, b_size=15, num_epoch=800):
 
         """
+        Class that generate a convolutional neural network using the Pytorch library
 
-        :param num_classes:
-        :param fc_nodes:
-        :param conv_nodes:
-        :param input_dim:
-        :param lr:
-        :param alpha:
-        :param b_size:
-        :param num_epoch:
+        :param num_classes: Number of class
+        :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
+                           [i, 0]: Number of output channels of the ith layer
+                           [i, 1]: Square convolution dimension of the ith layer
+        :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
+                          [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
+                          [i, 1]: Pooling kernel height
+                          [i, 2]: Pooling kernel width
+        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param input_dim: Image input dimensions [height, width, deep]
+        :param activation: Activation function (default: ReLU)
+        :param lr: The initial learning rate used with the Adam Optimizer
+        :param alpha: L2 penalty (regularization term) parameter as float
+        :param b_size: Batch size as integer
+        :param num_epoch: Number of epoch to do during the training
         """
 
         super(CNN, self).__init__()
+
+        # Base parameters (Parameters that will not change during training or hyperparameters search)
+        self.classes = num_classes
+        self.num_epoch = num_epoch
+
+        # We need a special type of list to ensure that torch detect every layer and node of the neural net
+        self.cnn_layer = torch.nn.ModuleList()
+        self.fc_layer = torch.nn.ModuleList()
+        self.out_layer = None
+
+        if activation == "ReLU":
+            self.activation = torch.nn.ReLU()
+        elif activation == "PReLu":
+            self.activation = torch.nn.PReLU()
+        elif activation == "elu":
+            self.activation = torch.nn.ELU()
+        elif activation == "sigmoide":
+            self.activation = torch.nn.Sigmoid()
+
+        self.soft = torch.nn.Softmax(dim=1)
+        self.criterion = torch.nn.CrossEntropyLoss()
+
+        self.hparams = {"lr": lr, "alpha": alpha, "b_size": b_size}
+
+        # Default image dimension. Height: 28, width: 28 and deep: 1 (MNIST)
+        if input_dim is None:
+            input_dim = np.array([28, 28, 1])
+
+        self.build_layer(conv_layer, pool_list, fc_nodes, input_dim)
+
+    def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim=None):
+
+        """
+        Create the model architecture
+
+        :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
+                           [i, 0]: Number of output channels of the ith layer
+                           [i, 1]: Square convolution dimension of the ith layer
+        :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
+                          [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
+                          [i, 1]: Pooling kernel height
+                          [i, 2]: Pooling kernel width
+        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param input_dim: Image input dimensions [height, width, deep]
+        :return:
+        """
+
+        # First convolutional layer
+        self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1]))
+
+        # We need to compute the input size of the fully connected layer
+        size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], pool_list[0])
+
+        # All others convolutional layers
+        for it in range(1, len(conv_layer)):
+            self.cnn_layer.append(torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1]))
+            size = self.conv_out_size(size, conv_layer[0, 1], pool_list[it])  # Update the output size
+
+        # Compute the fully connected input layer size
+        input_fc_dim = size[0] * size[1] * conv_layer[-1, 1]
+
+        # First fully connected layer
+        self.fc_layer.append(torch.nn.Linear(input_fc_dim, fc_nodes[0]))
+
+        # All others hidden layers
+        for it in range(1, len(fc_nodes)):
+            self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
+
+        # Output layer
+        self.out_layer = torch.nn.Linear(fc_nodes[-1], self.num_classes)
+
+    @staticmethod
+    def conv_out_size(in_size, conv_size, pool):
+
+        """
+        Calculate the output resulting of a convolution layer and it corresponding pooling layer
+
+        :param in_size: A numpy array of length 2 that represent the input image size. (height, width)
+        :param conv_size: The convolutional kernel size as integer
+        :param pool: A numpy array of length 3 that represent pooling layer parameters. (type, height, width)
+        :return: A numpy array of length 2 that represent the output image size. (height, width)
+        """
+
+        if conv_size == 0:
+            raise Exception("Convolutional kernel of size 0")
+
+        # In case of no padding out_size = in_size - (kernel_size - 1)
+        out_size = in_size - conv_size + 1
+
+        if np.any(pool[1:] == 0) & pool != 0:
+            raise Exception("Pooling kernel of size: {}, {}".format(pool[1], pool[2]))
+
+        elif pool != 0:
+            out_size = np.ceil([out_size[0] / pool[1], out_size[1] / pool[2]])
+
+        return out_size.astype(int)
 
     def fit(self, X_train, t_train):
 
