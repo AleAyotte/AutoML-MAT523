@@ -28,13 +28,13 @@ class HPtype(Enum):
 
 class Hyperparameter:
 
-    def __init__(self, name, type, values = None, domain = None, distribution = None):
+    def __init__(self, name, type, values=None, domain=None, distribution=None):
         """
 
         Class that defines an hyper-parameter
 
         :param name: Name of the hyper-parameter
-        :param nature: One type out of HPtype (DISCRETE, CONTINUOUS, CATEGORICAL)
+        :param type: One type out of HPtype (DISCRETE, CONTINUOUS, CATEGORICAL)
         :param values: Tuple of values that the hyper-parameter can take
         :param domain: Tuple containing start and end of the domain
         :param distribution: Statistical distibution associated to hyper-parameter
@@ -241,19 +241,33 @@ class MLP(Model):
 
         if solver == 'adam':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
-                 'solver': [solver], 'alpha': [alpha], 'batch_size': [batch_size],
-                 'learning_rate_init': [learning_rate_init], 'beta_1': [beta_1], 'beta_2': [beta_2]})
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.CATEGORICAL, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.CATEGORICAL, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.CATEGORICAL, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.CONTINUOUS, [alpha]),
+                 'batch_size': Hyperparameter('batch_size', HPtype.DISCRETE, [batch_size]),
+                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.CONTINUOUS, [learning_rate_init]),
+                 'beta_1': Hyperparameter('beta_1', HPtype.CONTINUOUS, [beta_1]),
+                 'beta_2': Hyperparameter('beta_2', HPtype.CONTINUOUS, [beta_2])})
 
         elif solver == 'sgd':
-            super(MLP, self).__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
-                                       'solver': [solver], 'alpha': [alpha], 'batch_size': [batch_size],
-                                       'learning_rate': [learning_rate], 'learning_rate_init': [learning_rate_init],
-                                       'power_t': [power_t], 'momentum': [momentum]})
+            super(MLP, self).__init__(
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.CATEGORICAL, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.CATEGORICAL, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.CATEGORICAL, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.CONTINUOUS, [alpha]),
+                 'batch_size': Hyperparameter('batch_size', HPtype.DISCRETE, [batch_size]),
+                 'learning_rate': Hyperparameter('learning_rate', HPtype.CATEGORICAL, [learning_rate]),
+                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.CONTINUOUS, [learning_rate_init]),
+                 'power_t': Hyperparameter('power_t', HPtype.CONTINUOUS, [power_t]),
+                 'momentum': Hyperparameter('momentum', HPtype.CONTINUOUS, [momentum])})
 
         elif solver == 'lbfgs':
-            super(MLP, self).__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
-                                       'solver': [solver], 'alpha': [alpha]})
+            super(MLP, self).__init__(
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.CATEGORICAL, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.CATEGORICAL, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.CATEGORICAL, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.CONTINUOUS, [alpha])})
 
     def fit(self, X_train, t_train):
 
