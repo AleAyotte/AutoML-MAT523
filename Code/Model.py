@@ -8,6 +8,7 @@
 
 """
 
+import DataManager as Dm
 import numpy as np
 import sklearn.svm as svm
 import sklearn.neural_network as nn
@@ -380,8 +381,7 @@ class CNN(Model, torch.nn.Module):
         Initialize the weights of the fully connected layer and convolutional layer with Xavier normal initialization
         and Kamming normal initialization respectively.
 
-        :param m:
-        :return:
+        :param m: A torch.nn module of the current model. If this module is a layer, then we initialize its weights.
         """
 
         if type(m) == torch.nn.Linear:
@@ -401,8 +401,21 @@ class CNN(Model, torch.nn.Module):
         :param t_train: Nx1 numpy array of classes associated with each observation
 
         """
+        train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"])
 
-        
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.alpha)
+
+        for epoch in range(self.num_epoch):
+            for step, data in enumerate(train_loader):
+
+                features, labels = data
+                optimizer.zero_grad()
+
+                # training step
+                pred = self(features)
+                loss = self.criterion(pred, labels)
+                loss.backward()
+                optimizer.step()
 
     def predict(self, X):
 
