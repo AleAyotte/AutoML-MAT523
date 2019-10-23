@@ -25,9 +25,10 @@ class HPtype(Enum):
     CONTINUOUS = 2
     CATEGORICAL = 3
 
+
 class Hyperparameter:
 
-    def __init__(self, name, nature, values = None, domain = None, distribution = None):
+    def __init__(self, name, type, values = None, domain = None, distribution = None):
         """
 
         Class that defines an hyper-parameter
@@ -41,10 +42,19 @@ class Hyperparameter:
         """
 
         self.name = name
-        self.nature = nature
+        self.type = type
         self.values = values
         self.domain = domain
         self.distribution = distribution
+
+        if self.type == HPtype.DISCRETE:
+            self.type_name = 'discrete'
+
+        elif self.type == HPtype.CONTINUOUS:
+            self.type_name = 'continuous'
+
+        else:
+            self.type_name = 'categorical'
 
 
 class Model:
@@ -146,7 +156,7 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super(SVM, self).__init__({'C': {'type':HPtype.CONTINUOUS, [C]}, 'kernel': (HPtype.CATEGORICAL, [kernel]),
+            super(SVM, self).__init__({'C': Hyperparameter('C',), 'kernel': (HPtype.CATEGORICAL, [kernel]),
                                        'gamma': (HPtype.CONTINUOUS, [gamma])})
 
         elif kernel == 'linear':
