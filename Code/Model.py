@@ -390,7 +390,7 @@ class CNN(Model, torch.nn.Module):
         elif type(m) == torch.nn.Conv2d:
             torch.nn.init.kaiming_normal(m.weight)
 
-    def fit(self, X_train, t_train):
+    def fit(self, X_train, t_train, verbose=False):
 
         """
         Train our model
@@ -399,13 +399,15 @@ class CNN(Model, torch.nn.Module):
 
         :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t_train: Nx1 numpy array of classes associated with each observation
-
+        :param verbose: print the loss during training
         """
         train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"])
 
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.alpha)
 
         for epoch in range(self.num_epoch):
+            sum_loss = 0.0
+            it = 0
             for step, data in enumerate(train_loader):
 
                 features, labels = data
@@ -416,6 +418,12 @@ class CNN(Model, torch.nn.Module):
                 loss = self.criterion(pred, labels)
                 loss.backward()
                 optimizer.step()
+
+                # Save the loss
+                sum_loss += loss
+                it += 1
+            if verbose & epoch % 20 == 19:
+                print("\n epoch: {:d}, average_loss: {:.4f}".format(epoch + 1, sum_loss / it))
 
     def predict(self, X):
 
