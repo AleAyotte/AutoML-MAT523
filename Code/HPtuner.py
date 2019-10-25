@@ -8,6 +8,7 @@
 
 import sklearn as sk
 from hyperopt import hp
+from Code.Model import HPtype
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -137,6 +138,26 @@ class HPtuner:
             space = []
 
             for hyperparam in model.HP_space:
-                space.append(hp.choice(hyperparam, model.HP_space[hyperparam]))
+                space.append(hp.choice(hyperparam, model.HP_space[hyperparam].value))
+
+        elif method == 'gaussian_process' or method == 'random_forest':
+            space = []
+
+            for hyperparam in model.HP_space:
+
+                hp_initial_value = model.HP_space[hyperparam].value[0]
+
+                if model.HP_space[hyperparam].type == HPtype.CONTINUOUS:
+
+                    space.append({'name': hyperparam, 'type': 'continuous',
+                                  'domain': (hp_initial_value, hp_initial_value)})
+
+                elif model.HP_space[hyperparam].type == HPtype.DISCRETE:
+
+                    space.append({'name': hyperparam, 'type': 'discrete', 'domain': (hp_initial_value,)})
+
+                elif model.HP_space[hyperparam].type == HPtype.CATEGORICAL:
+
+                    space.append({'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)})
 
         return space
