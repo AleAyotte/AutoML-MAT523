@@ -29,6 +29,7 @@ class HPtuner:
 
         self.model = model
         self.method = method
+        self.search_space = self.search_space_ignition(method,model)
 
     def set_search_space(self, hp_search_space_dict):
 
@@ -161,3 +162,68 @@ class HPtuner:
                     space.append({'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)})
 
         return space
+
+
+class Domain:
+
+    def __init__(self, type):
+
+        """
+        Abstract (parent) class that represents a domain for hyper-parameter's possible values
+
+        :param type: One type of domain among HPtype (CONTINUOUS, DISCRETE, CATEGORICAL)
+        """
+        self.type = type
+
+
+class ContinuousDomain(Domain):
+
+    def __init__(self, lower_bound, upper_bound):
+
+        """
+        Class that generates a continuous domain
+
+        :param lower_bound: Lowest possible value (included)
+        :param upper_bound: Highest possible value (included)
+
+        """
+
+        if lower_bound > upper_bound:
+            lower_bound, upper_bound = upper_bound, lower_bound
+
+        self.lb = lower_bound
+        self.ub = upper_bound
+
+        super(ContinuousDomain, self).__init__(HPtype.CONTINUOUS)
+
+
+class DiscreteDomain(Domain):
+
+    def __init__(self, possible_values):
+
+        """
+        Class that generates a domain with possible discrete values of an hyper-parameter
+        :param possible_values: list of values
+
+        """
+
+        self.values = possible_values
+
+        super(DiscreteDomain, self).__init__(HPtype.DISCRETE)
+
+
+class CategoricalDomain(Domain):
+
+    def __init__(self, possible_values):
+
+        """
+        Class that generates a domain with possible categorical values of an hyper-parameter
+        :param possible_values: list of values
+
+        """
+        self.values = possible_values
+
+        super(CategoricalDomain, self).__init__(HPtype.CATEGORICAL)
+        
+
+
