@@ -15,7 +15,7 @@ import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
-import torch.utils.data as utils
+import time
 
 
 class Model:
@@ -228,7 +228,7 @@ class MLP(Model):
         return self.model_frame.predict(X)
 
 
-class CNN(Model, torch.nn.Module):
+class CnnVanilla(Model, torch.nn.Module):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='ReLU', input_dim=None, lr=0.001,
                  alpha=0.0, b_size=15, num_epoch=800):
 
@@ -252,15 +252,18 @@ class CNN(Model, torch.nn.Module):
         :param num_epoch: Number of epoch to do during the training
         """
 
-        super(CNN, self).__init__()
+        Model.__init__(self, {"lr": [lr], "alpha": [alpha], "b_size": [b_size]})
+        torch.nn.Module.__init__(self)
 
         # Base parameters (Parameters that will not change during training or hyperparameters search)
         self.classes = num_classes
         self.num_epoch = num_epoch
+        self.device_ = torch.device("cpu")
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.cnn_layer = torch.nn.ModuleList()
         self.fc_layer = torch.nn.ModuleList()
+        self.num_flat_features = 0
         self.out_layer = None
         self.pool = pool_list
 
@@ -282,6 +285,7 @@ class CNN(Model, torch.nn.Module):
         if input_dim is None:
             input_dim = np.array([28, 28, 1])
 
+        # We build the model
         self.build_layer(conv_layer, pool_list, fc_nodes, input_dim)
 
     def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim=None):
@@ -313,17 +317,17 @@ class CNN(Model, torch.nn.Module):
             size = self.conv_out_size(size, conv_layer[0, 1], pool_list[it])  # Update the output size
 
         # Compute the fully connected input layer size
-        input_fc_dim = size[0] * size[1] * conv_layer[-1, 1]
+        self.num_flat_features = size[0] * size[1] * conv_layer[-1, 0]
 
         # First fully connected layer
-        self.fc_layer.append(torch.nn.Linear(input_fc_dim, fc_nodes[0]))
+        self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
 
         # All others hidden layers
         for it in range(1, len(fc_nodes)):
             self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
 
         # Output layer
-        self.out_layer = torch.nn.Linear(fc_nodes[-1], self.num_classes)
+        self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
 
     @staticmethod
     def conv_out_size(in_size, conv_size, pool):
@@ -343,11 +347,11 @@ class CNN(Model, torch.nn.Module):
         # In case of no padding out_size = in_size - (kernel_size - 1)
         out_size = in_size - conv_size + 1
 
-        if np.any(pool[1:] == 0) & pool != 0:
+        if np.any(pool[1:] == 0) & pool[0] != 0:
             raise Exception("Pooling kernel of size: {}, {}".format(pool[1], pool[2]))
 
-        elif pool != 0:
-            out_size = np.ceil([out_size[0] / pool[1], out_size[1] / pool[2]])
+        elif pool[0] != 0:
+            out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
 
         return out_size.astype(int)
 
@@ -364,12 +368,12 @@ class CNN(Model, torch.nn.Module):
             x = self.activation(self.cnn_layer[i](x) + l(x))
 
             if self.pool[i, 0] == 1:
-                x = F.max_pool2d(x, self.pool[i, 1], self.pool[i, 2])
+                x = F.max_pool2d(x, int(self.pool[i, 1]), int(self.pool[i, 2]))
 
-        x = x.view(-1, self.num_flat_features(x))
+        x = x.view(-1, self.num_flat_features)
 
         for i, l in enumerate(self.fc_layer):
-            x = self.activaton(self.fc_layer[i](x) + l(x))
+            x = self.activation(self.fc_layer[i](x) + l(x))
 
         x = self.out_layer(x)
         return x
@@ -390,27 +394,46 @@ class CNN(Model, torch.nn.Module):
         elif type(m) == torch.nn.Conv2d:
             torch.nn.init.kaiming_normal(m.weight)
 
-    def fit(self, X_train, t_train, verbose=False):
+    def switch_device(self, _device):
+
+        """
+        Switch the used device that our model will use for training and prediction
+
+        :param _device: The device name (cpu, gpu) as string
+        """
+
+        if _device == "gpu":
+            self.device_ = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device_ = torch.device("cpu")
+
+        self.to(self.device_)
+
+    def fit(self, dtset, verbose=False, gpu=False):
 
         """
         Train our model
 
-        Note that it will be override by the children's classes
-
-        :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
-        :param t_train: Nx1 numpy array of classes associated with each observation
+        :param dtset:
         :param verbose: print the loss during training
+        :param gpu: True: Train the model on the gpu. False: Train the model on the cpu
         """
-        train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"])
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.alpha)
+        if gpu:
+            self.switch_device("gpu")
+
+        train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["alpha"])
+
+        begin = time.time()
 
         for epoch in range(self.num_epoch):
             sum_loss = 0.0
             it = 0
-            for step, data in enumerate(train_loader):
 
-                features, labels = data
+            for step, data in enumerate(train_loader, 0):
+                features, labels = data[0].to(self.device_), data[1].to(self.device_)
+
                 optimizer.zero_grad()
 
                 # training step
@@ -422,8 +445,12 @@ class CNN(Model, torch.nn.Module):
                 # Save the loss
                 sum_loss += loss
                 it += 1
-            if verbose & epoch % 20 == 19:
-                print("\n epoch: {:d}, average_loss: {:.4f}".format(epoch + 1, sum_loss / it))
+
+            if verbose:
+                end = time.time()
+                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}".format(
+                    epoch + 1, end-begin, sum_loss / it))
+                begin = time.time()
 
     def predict(self, X):
 
@@ -435,5 +462,25 @@ class CNN(Model, torch.nn.Module):
         """
 
         with torch.no_grad():
-            out = self.soft(self(X)).numpy()
+            out = torch.Tensor.cpu(self.soft(self(X))).numpy()
         return np.argmax(out, axis=1)
+
+    def score(self, dtset):
+
+        """
+        Compute the accuracy of the model on a given test dataset
+
+        :param dtset: A torch dataset which contain our test data points and labels
+        :return: The accuracy of the model.
+        """
+
+        test_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=False)
+
+        score = np.array([])
+        for data in test_loader:
+            features, labels = data[0].to(self.device_), data[1].numpy()
+            pred = self.predict(features)
+
+            score = np.append(score, np.where(pred == labels, 1, 0).mean())
+
+        return score.mean()
