@@ -149,12 +149,12 @@ def load_cifar10():
 
 def load_mnist():
     """
-    Load the MNIST dataset using pytorch
+    Load the MNIST dataset using pytorch and normalize it using is
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
     """
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.1307], [0.3081])])
     trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     testset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
