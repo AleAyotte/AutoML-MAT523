@@ -230,7 +230,7 @@ class MLP(Model):
 
 class CnnVanilla(Model, torch.nn.Module):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='ReLU', input_dim=None, lr=0.001,
-                 alpha=0.0, b_size=15, num_epoch=800):
+                 alpha=0.0, eps=1e-8,  b_size=15, num_epoch=10):
 
         """
         Class that generate a convolutional neural network using the Pytorch library
@@ -247,12 +247,13 @@ class CnnVanilla(Model, torch.nn.Module):
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: ReLU)
         :param lr: The initial learning rate used with the Adam Optimizer
-        :param alpha: L2 penalty (regularization term) parameter as float
-        :param b_size: Batch size as integer
-        :param num_epoch: Number of epoch to do during the training
+        :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
+        :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
+        :param b_size: Batch size as integer (default: 15)
+        :param num_epoch: Number of epoch to do during the training (default: 10)
         """
 
-        Model.__init__(self, {"lr": [lr], "alpha": [alpha], "b_size": [b_size]})
+        Model.__init__(self, {"lr": [lr], "alpha": [alpha], "eps": [eps], "b_size": [b_size]})
         torch.nn.Module.__init__(self)
 
         # Base parameters (Parameters that will not change during training or hyperparameters search)
@@ -279,7 +280,7 @@ class CnnVanilla(Model, torch.nn.Module):
         self.soft = torch.nn.Softmax(dim=1)
         self.criterion = torch.nn.CrossEntropyLoss()
 
-        self.hparams = {"lr": lr, "alpha": alpha, "b_size": b_size}
+        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "b_size": b_size}
 
         # Default image dimension. Height: 28, width: 28 and deep: 1 (MNIST)
         if input_dim is None:
@@ -423,8 +424,8 @@ class CnnVanilla(Model, torch.nn.Module):
             self.switch_device("gpu")
 
         train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["alpha"])
-
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["alpha"],
+                                     eps=self.hparams["eps"])
         begin = time.time()
 
         for epoch in range(self.num_epoch):
