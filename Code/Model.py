@@ -230,7 +230,7 @@ class MLP(Model):
 
 class CnnVanilla(Model, torch.nn.Module):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='ReLU', input_dim=None, lr=0.001,
-                 alpha=0.0, eps=1e-8,  b_size=15, num_epoch=10):
+                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
 
         """
         Class that generate a convolutional neural network using the Pytorch library
@@ -249,17 +249,21 @@ class CnnVanilla(Model, torch.nn.Module):
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         """
 
-        Model.__init__(self, {"lr": [lr], "alpha": [alpha], "eps": [eps], "b_size": [b_size]})
+        Model.__init__(self, {"lr": [lr], "alpha": [alpha], "eps": [eps], "dropout": [drop_rate], "b_size": [b_size]})
         torch.nn.Module.__init__(self)
 
         # Base parameters (Parameters that will not change during training or hyperparameters search)
         self.classes = num_classes
         self.num_epoch = num_epoch
         self.device_ = torch.device("cpu")
+
+        # Hyperparameters dictionary
+        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size}
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.cnn_layer = torch.nn.ModuleList()
@@ -277,10 +281,9 @@ class CnnVanilla(Model, torch.nn.Module):
         elif activation == "sigmoide":
             self.activation = torch.nn.Sigmoid()
 
+        self.drop = torch.nn.Dropout(p=self.hparams["dropout"])
         self.soft = torch.nn.Softmax(dim=1)
         self.criterion = torch.nn.CrossEntropyLoss()
-
-        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "b_size": b_size}
 
         # Default image dimension. Height: 28, width: 28 and deep: 1 (MNIST)
         if input_dim is None:
@@ -353,7 +356,7 @@ class CnnVanilla(Model, torch.nn.Module):
 
         elif pool[0] != 0:
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
-        
+
         return out_size.astype(int)
 
     def forward(self, x):
@@ -370,11 +373,13 @@ class CnnVanilla(Model, torch.nn.Module):
 
             if self.pool[i, 0] == 1:
                 x = F.max_pool2d(x, int(self.pool[i, 1]), int(self.pool[i, 2]))
+            elif self.pool[i, 0] == 2:
+                x = F.avg_pool2d(x, int(self.pool[i, 1]), int(self.pool[i, 2]))
 
         x = x.view(-1, self.num_flat_features)
 
         for i, l in enumerate(self.fc_layer):
-            x = self.activation(self.fc_layer[i](x) + l(x))
+            x = self.drop(self.activation(self.fc_layer[i](x) + l(x)))
 
         x = self.out_layer(x)
         return x
@@ -425,7 +430,7 @@ class CnnVanilla(Model, torch.nn.Module):
 
         train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["alpha"],
-                                     eps=self.hparams["eps"])
+                                     eps=self.hparams["eps"], amsgrad=False)
         begin = time.time()
 
         for epoch in range(self.num_epoch):
