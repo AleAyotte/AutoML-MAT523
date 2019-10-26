@@ -315,7 +315,7 @@ class CnnVanilla(Model, torch.nn.Module):
         # All others convolutional layers
         for it in range(1, len(conv_layer)):
             self.cnn_layer.append(torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1]))
-            size = self.conv_out_size(size, conv_layer[0, 1], pool_list[it])  # Update the output size
+            size = self.conv_out_size(size, conv_layer[it, 1], pool_list[it])  # Update the output size
 
         # Compute the fully connected input layer size
         self.num_flat_features = size[0] * size[1] * conv_layer[-1, 0]
@@ -353,7 +353,7 @@ class CnnVanilla(Model, torch.nn.Module):
 
         elif pool[0] != 0:
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
-
+        
         return out_size.astype(int)
 
     def forward(self, x):
