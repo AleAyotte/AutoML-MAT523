@@ -163,6 +163,26 @@ class HPtuner:
 
         return space
 
+    def build_loss_funct(self, X, t, nb_of_cross_validation=3):
+
+        """
+        Build a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
+
+        :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t: Nx1 numpy array of classes associated with each observation
+        :param nb_of_cross_validation: Number of data splits and validation to execute
+        :return: A specific loss function for our tuner
+        """
+        if self.method == 'random_search' or self.method == 'tpe':
+
+            def L(args):
+                hyperparams = args['param']
+                self.model.set_hyperparameters(hyperparams)
+                return self.model.cross_validation(X,t,nb_of_cross_validation)
+
+        else:
+            raise NotImplementedError
+        
 
 class Domain:
 
@@ -224,6 +244,6 @@ class CategoricalDomain(Domain):
         self.values = possible_values
 
         super(CategoricalDomain, self).__init__(HPtype.CATEGORICAL)
-        
+
 
 
