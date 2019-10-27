@@ -147,19 +147,13 @@ class HPtuner:
             for hyperparam in model.HP_space:
 
                 hp_initial_value = model.HP_space[hyperparam].value[0]
+                hp_type = model.HP_space[hyperparam].type_name
 
-                if model.HP_space[hyperparam].type == HPtype.CONTINUOUS:
+                space.append({'name': hyperparam, 'type': hp_type,
+                              'domain': (hp_initial_value,)})
 
-                    space.append({'name': hyperparam, 'type': 'continuous',
-                                  'domain': (hp_initial_value, hp_initial_value)})
-
-                elif model.HP_space[hyperparam].type == HPtype.DISCRETE:
-
-                    space.append({'name': hyperparam, 'type': 'discrete', 'domain': (hp_initial_value,)})
-
-                elif model.HP_space[hyperparam].type == HPtype.CATEGORICAL:
-
-                    space.append({'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)})
+        else:
+            raise NotImplementedError
 
         return space
 
@@ -178,11 +172,11 @@ class HPtuner:
             def L(args):
                 hyperparams = args['param']
                 self.model.set_hyperparameters(hyperparams)
-                return self.model.cross_validation(X,t,nb_of_cross_validation)
+                return self.model.cross_validation(X, t, nb_of_cross_validation)
 
         else:
             raise NotImplementedError
-        
+
 
 class Domain:
 
