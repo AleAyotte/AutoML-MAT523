@@ -11,6 +11,7 @@ import numpy as np
 import sklearn.svm as svm
 import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from enum import Enum, unique
 
 
@@ -64,6 +65,17 @@ class Model:
         """
         self.HP_space = HP_Dict
 
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Change hyper-parameters of our model
+
+        :param hyperparams: Dictionary of hyper-parameters to change
+
+        """
+
+        raise NotImplementedError
+
     def fit(self, X_train, t_train):
 
         """
@@ -102,6 +114,26 @@ class Model:
         diff = t - predictions
 
         return ((diff == 0).sum())/len(diff)  # (Nb of good predictions / nb of predictions)
+
+    def cross_validation(self, X_train, t_train, nb_of_cross_validation=3):
+
+        """
+
+        :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t_train: Nx1 numpy array of classes associated with each observation
+        :param nb_of_cross_validation:  Number of data splits and validation to execute
+        :return: Mean of score (accuracy)
+
+        """
+        res = np.array([])
+
+        for i in range(nb_of_cross_validation):
+
+            x_train, x_test, y_train, y_test = train_test_split(X_train, t_train, test_size=0.2)
+            self.fit(x_train, y_train)
+            res = np.append(res, self.score(x_test, y_test))
+
+        return np.mean(res)
 
     def plot_data(self, data, classes):
 
@@ -198,6 +230,17 @@ class SVM(Model):
 
         return self.model_frame.predict(X)
 
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Change hyper-parameters of our model
+
+        :param hyperparams: Dictionary of hyper-parameters to change
+        """
+
+        self.model_frame.set_params(**hyperparams)
+
+
 
 class MLP(Model):
 
@@ -286,4 +329,14 @@ class MLP(Model):
         """
 
         return self.model_frame.predict(X)
+
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Change hyper-parameters of our model
+
+        :param hyperparams: Dictionary of hyper-parameters to change
+        """
+
+        self.model_frame.set_params(**hyperparams)
 
