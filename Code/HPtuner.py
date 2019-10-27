@@ -7,7 +7,7 @@
 """
 
 import sklearn as sk
-from hyperopt import hp
+from hyperopt import hp, fmin, rand, tpe, space_eval
 from Code.Model import HPtype
 
 
@@ -84,39 +84,41 @@ class HPtuner:
         self.model.model_frame = gs_cv.best_estimator_
         self.model.HP_space = gs_cv.best_params_
 
-    def random_search_sklearn(self, X, t, n_iter):
+    def random_search(self, loss, n_evals):
 
         """
         Tune our model with random search method according to hyperparameters' space
 
-        :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
-        :param t: Nx1 numpy array of target values associated with each observation
-        :param n_iter: Number of iterations to do
+        :param loss: loss function to minimize
+        :param n_evals: Number of evaluations to do
         """
 
         # We find the selection of best hyperparameters according to random_search
-        rs_cv = sk.model_selection.RandomizedSearchCV(self.model.model_frame, self.model.HP_space, n_iter)
-        rs_cv.fit(X, t)
+        best_hyperparams = fmin(fn=loss, space=self.search_space, algo=rand.suggest, max_evals=n_evals)
+        best_hyperparams = space_eval(self.search_space, best_hyperparams)
 
         # We apply changes to original model
-        self.model.model_frame = rs_cv.best_estimator_
-        self.model.HP_space = rs_cv.best_params_
+        self.model.set_hyperparameters(best_hyperparams)
 
-    def tune(self, X, t, n_iter=10):
+    def tune(self, X, t, n_evals=10):
 
         """
         Optimize model's hyperparameters with the method specified at the ignition of our tuner
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
-        :param n_iter: Number of iteration to do. Only considered if method is 'random_search'
+        :param n_evals: Number of evaluations to do. Only considered if method is 'random_search'
         """
 
         if self.method == 'grid_search':
             self.grid_search_sklearn(X, t)
 
-        elif self.method == 'random_search':
-            self.random_search_sklearn(X, t, n_iter)
+        else:
+
+            loss = self.build_loss_funct(X, t)
+
+            if self.method == 'random_search':
+                self.random_search(loss, n_evals)
 
     @staticmethod
     def search_space_ignition(method, model):
@@ -127,7 +129,6 @@ class HPtuner:
         :return: Search space frame for our tuner
 
         """
-        space = None
 
         if method == 'grid_search':
             space = {}
@@ -136,10 +137,12 @@ class HPtuner:
                 space[hyperparam] = model.HP_space[hyperparam].value
 
         elif method == 'random_search' or method == 'tpe':
-            space = []
+            hp_dict = {}
 
             for hyperparam in model.HP_space:
-                space.append(hp.choice(hyperparam, model.HP_space[hyperparam].value))
+                hp_dict[hyperparam] = hp.choice(hyperparam, model.HP_space[hyperparam].value)
+
+            space = hp.choice('space', [hp_dict])
 
         elif method == 'gaussian_process' or method == 'random_forest':
             space = []
@@ -169,10 +172,11 @@ class HPtuner:
         """
         if self.method == 'random_search' or self.method == 'tpe':
 
-            def L(args):
-                hyperparams = args['param']
+            def loss(hyperparams):
                 self.model.set_hyperparameters(hyperparams)
-                return self.model.cross_validation(X, t, nb_of_cross_validation)
+                return -1*(self.model.cross_validation(X, t, nb_of_cross_validation))
+
+            return loss
 
         else:
             raise NotImplementedError
