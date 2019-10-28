@@ -6,7 +6,7 @@
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
-import sklearn as sk
+from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe, space_eval
 from Code.Model import HPtype
 
@@ -69,32 +69,42 @@ class HPtuner:
             raise Exception('No such hyper-parameter "{}" in our model'.format(hyperparameter))
 
         if self.model.HP_space[hyperparameter].type != space.type:
-            raise Exception('Conflict between {} type and space type'.format(hyperparameter))
+            print('WARNING, {} type and space type are different'.format(hyperparameter))
+            self.search_space.change_hyperparameter_type(hyperparameter, space.type)
 
-        else:
-            self.search_space[hyperparameter] = space.compatible_format(self.method, hyperparameter)
+        self.search_space[hyperparameter] = space.compatible_format(self.method, hyperparameter)
 
-    def grid_search_sklearn(self, X, t):
+    def grid_search(self, loss):
 
         """
-        Tune our model with grid search method according to hyper-parameters' space
+        Tune our model by testing all possible combination in our search space
 
-        :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
-        :param t: Nx1 numpy array of target values associated with each observation
+        :param loss: loss function to minimize
         """
+
+        # We build all possible configurations
+        all_configs = ParameterGrid(self.search_space.space)
+
+        # We save the current best configuration of hyperparameter and the loss associated
+        best_hyperparams = {}
+        for hyperparam in self.model.HP_space:
+            best_hyperparams[hyperparam] = self.model.HP_space[hyperparam].value[0]
+
+        lowest_lost = loss(best_hyperparams)
 
         # We find the selection of best hyperparameters according to grid_search
-        gs_cv = sk.model_selection.GridSearchCV(self.model.model_frame, self.model.HP_space)
-        gs_cv.fit(X, t)
+        for config in all_configs:
+            current_loss = loss(config)
+            if current_loss < lowest_lost:
+                best_hyperparams = config
 
         # We apply changes to original model
-        self.model.model_frame = gs_cv.best_estimator_
-        self.model.HP_space = gs_cv.best_params_
+        self.model.set_hyperparameters(best_hyperparams)
 
     def random_search(self, loss, n_evals):
 
         """
-        Tune our model with random search method according to hyperparameters' space
+        Tune our model by evaluate random points in our search "n_evals" times
 
         :param loss: loss function to minimize
         :param n_evals: Number of evaluations to do
@@ -117,15 +127,18 @@ class HPtuner:
         :param n_evals: Number of evaluations to do. Only considered if method is 'random_search'
         """
 
+        # We build loss function
+        loss = self.build_loss_funct(X, t)
+
+        # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
-            self.grid_search_sklearn(X, t)
+            self.grid_search(loss)
+
+        elif self.method == 'random_search':
+            self.random_search(loss, n_evals)
 
         else:
-
-            loss = self.build_loss_funct(X, t)
-
-            if self.method == 'random_search':
-                self.random_search(loss, n_evals)
+            raise NotImplementedError
 
     @staticmethod
     def search_space_ignition(method, model):
@@ -162,7 +175,7 @@ class HPtuner:
         :param nb_of_cross_validation: Number of data splits and validation to execute
         :return: A specific loss function for our tuner
         """
-        if self.method == 'random_search' or self.method == 'tpe':
+        if self.method in ['grid_search', 'random_search', 'tpe']:
 
             def loss(hyperparams):
                 self.model.set_hyperparameters(hyperparams)
@@ -174,7 +187,13 @@ class HPtuner:
             raise NotImplementedError
 
 
-class HyperoptSearchSpace:
+class SearchSpace:
+
+    def change_hyperparameter_type(self, hyperparam, new_type):
+        pass
+
+
+class HyperoptSearchSpace(SearchSpace):
 
     def __init__(self, model):
 
@@ -194,8 +213,11 @@ class HyperoptSearchSpace:
     def __getitem__(self, key):
         return self.space['space'][key]
 
+    def __setitem__(self, key, value):
+        self.space['space'][key] = value
 
-class SklearnSearchSpace:
+
+class SklearnSearchSpace(SearchSpace):
 
     def __init__(self, model):
 
@@ -215,8 +237,11 @@ class SklearnSearchSpace:
     def __getitem__(self, key):
         return self.space[key]
 
+    def __setitem__(self, key, value):
+        self.space[key] = value
 
-class GPyOptSearchSpace:
+
+class GPyOptSearchSpace(SearchSpace):
 
     def __init__(self, model):
 
@@ -238,7 +263,26 @@ class GPyOptSearchSpace:
         self.space = space
 
     def __getitem__(self, key):
-        return next(hyperparam for hyperparam in self.space if hyperparam['name'] == key)
+        return next(hyperparam['domain'] for hyperparam in self.space if hyperparam['name'] == key)
+
+    def __setitem__(self, key, value):
+
+        for hyperparam in self.space:
+            if hyperparam['name'] == key:
+                hyperparam['domain'] = value
+
+    def change_hyperparameter_type(self, hp_to_fix, new_type):
+
+        """
+        Change hyper-parameter type in the search space
+
+        :param hp_to_fix: Name of the hyper-parameter which we want to change his type
+        :param new_type: The new type (one among HPtype)
+        """
+
+        for hyperparam in self.space:
+            if hyperparam['name'] == hp_to_fix:
+                hyperparam['type'] = new_type
 
 
 class Domain:
@@ -296,6 +340,7 @@ class DiscreteDomain(Domain):
 
         """
         Class that generates a domain with possible discrete values of an hyper-parameter
+
         :param possible_values: list of values
 
         """
@@ -313,8 +358,10 @@ class DiscreteDomain(Domain):
         :param label: String defining the name of the hyper-parameter
         :return: Set of values compatible with method used by HPtuner
         """
+        if tuner_method == 'grid_search':
+            return self.values
 
-        if tuner_method == 'random_search' or tuner_method == 'tpe':
+        elif tuner_method == 'random_search' or tuner_method == 'tpe':
             return hp.choice(label, self.values)
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
@@ -344,8 +391,12 @@ class CategoricalDomain(Domain):
         :return: Set of values compatible with method used by HPtuner
         """
 
+        if tuner_method == 'grid_search':
+            return self.values
+
         if tuner_method == 'random_search' or tuner_method == 'tpe':
             return hp.choice(label, self.values)
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
             return tuple(self.values)
+
