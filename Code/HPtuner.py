@@ -56,7 +56,7 @@ class HPtuner:
         Function that defines hyper-parameter's possible values (or distribution) in our model attribute
 
         :param hyperparameter: Name of the hyper-parameter
-        :param space: List of values or statistical distribution from scipy.stats
+        :param domain: One domain among ('ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain')
 
         :return: Change value associate with the hyper-parameter in our model attribute HP_space dictionary
 
@@ -188,6 +188,10 @@ class HPtuner:
 
 
 class SearchSpace:
+
+    """
+    Definition of a search space for our hyper-parameters
+    """
 
     def change_hyperparameter_type(self, hyperparam, new_type):
         pass
