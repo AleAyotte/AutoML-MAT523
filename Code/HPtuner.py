@@ -39,18 +39,18 @@ class HPtuner:
         Function that defines hyper-parameter's possible values (or distribution) for all hyper-parameters in our model
         attribute
 
-        :param hp_search_space_dict: Dictionary specifing hyper-parameters to tune and search space
-                                     associate to each of them. Search space must be a list of values
-                                     or a statistical distribution from scipy stats.
+        :param hp_search_space_dict: Dictionary specifing hyper-parameters to tune and domains
+                                     associated to each of them. Each domain must be one among
+                                     ('ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain')
 
-        :return: Change hyper-parameter space in our model attribute
+        :return: Change hyper-parameter domain in our model attribute
 
         """
 
         for hyperparam in hp_search_space_dict:
             self.set_single_hp_space(hyperparam, hp_search_space_dict[hyperparam])
 
-    def set_single_hp_space(self, hyperparameter, space):
+    def set_single_hp_space(self, hyperparameter, domain):
 
         """
         Function that defines hyper-parameter's possible values (or distribution) in our model attribute
@@ -62,17 +62,17 @@ class HPtuner:
 
         """
 
-        if type(space).__name__ not in domain_type_list:
+        if type(domain).__name__ not in domain_type_list:
             raise Exception('No such space type accepted. Must be in {}'.format(domain_type_list))
 
         if hyperparameter not in self.model.HP_space:
             raise Exception('No such hyper-parameter "{}" in our model'.format(hyperparameter))
 
-        if self.model.HP_space[hyperparameter].type != space.type:
+        if self.model.HP_space[hyperparameter].type != domain.type:
             print('WARNING, {} type and space type are different'.format(hyperparameter))
-            self.search_space.change_hyperparameter_type(hyperparameter, space.type)
+            self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
 
-        self.search_space[hyperparameter] = space.compatible_format(self.method, hyperparameter)
+        self.search_space[hyperparameter] = domain.compatible_format(self.method, hyperparameter)
 
     def grid_search(self, loss):
 
@@ -399,4 +399,3 @@ class CategoricalDomain(Domain):
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
             return tuple(self.values)
-
