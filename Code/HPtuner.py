@@ -12,6 +12,7 @@ from Code.Model import HPtype
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
+domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 
 
 class HPtuner:
@@ -29,7 +30,7 @@ class HPtuner:
 
         self.model = model
         self.method = method
-        self.search_space = self.search_space_ignition(method,model)
+        self.search_space = self.search_space_ignition(method, model)
 
     def set_search_space(self, hp_search_space_dict):
 
@@ -61,11 +62,17 @@ class HPtuner:
 
         """
 
-        if hyperparameter in self.model.HP_space:
-            self.model.HP_space[hyperparameter] = space
+        if type(space).__name__ not in domain_type_list:
+            raise Exception('No such space type accepted. Must be in {}'.format(domain_type_list))
+
+        if hyperparameter not in self.model.HP_space:
+            raise Exception('No such hyper-parameter "{}" in our model'.format(hyperparameter))
+
+        if self.model.HP_space[hyperparameter].type != space.type:
+            raise Exception('Conflict between {} type and space type'.format(hyperparameter))
 
         else:
-            raise Exception('No such hyper-parameter "{}" in our model'.format(hyperparameter))
+            self.search_space[hyperparameter] = space.compatible_format(self.method, hyperparameter)
 
     def grid_search_sklearn(self, X, t):
 
@@ -131,34 +138,19 @@ class HPtuner:
         """
 
         if method == 'grid_search':
-            space = {}
 
-            for hyperparam in model.HP_space:
-                space[hyperparam] = model.HP_space[hyperparam].value
+            return SklearnSearchSpace(model)
 
         elif method == 'random_search' or method == 'tpe':
-            hp_dict = {}
 
-            for hyperparam in model.HP_space:
-                hp_dict[hyperparam] = hp.choice(hyperparam, model.HP_space[hyperparam].value)
-
-            space = hp.choice('space', [hp_dict])
+            return HyperoptSearchSpace(model)
 
         elif method == 'gaussian_process' or method == 'random_forest':
-            space = []
 
-            for hyperparam in model.HP_space:
-
-                hp_initial_value = model.HP_space[hyperparam].value[0]
-                hp_type = model.HP_space[hyperparam].type_name
-
-                space.append({'name': hyperparam, 'type': hp_type,
-                              'domain': (hp_initial_value,)})
+            return GPyOptSearchSpace(model)
 
         else:
             raise NotImplementedError
-
-        return space
 
     def build_loss_funct(self, X, t, nb_of_cross_validation=3):
 
@@ -180,6 +172,73 @@ class HPtuner:
 
         else:
             raise NotImplementedError
+
+
+class HyperoptSearchSpace:
+
+    def __init__(self, model):
+
+        """
+        Class that defines a compatible search space with Hyperopt package hyper-parameter optimization algorithm
+        :param model: Available model from Model.py
+
+        """
+
+        hp_dict = {}
+
+        for hyperparam in model.HP_space:
+            hp_dict[hyperparam] = hp.choice(hyperparam, model.HP_space[hyperparam].value)
+
+        self.space = hp.choice('space', [hp_dict])
+
+    def __getitem__(self, key):
+        return self.space['space'][key]
+
+
+class SklearnSearchSpace:
+
+    def __init__(self, model):
+
+        """
+        Class that defines a compatible search space with Sklearn package hyper-parameter optimization algorithm
+        :param model: Available model from Model.py
+
+        """
+
+        space = {}
+
+        for hyperparam in model.HP_space:
+            space[hyperparam] = model.HP_space[hyperparam].value
+
+        self.space = space
+
+    def __getitem__(self, key):
+        return self.space[key]
+
+
+class GPyOptSearchSpace:
+
+    def __init__(self, model):
+
+        """
+        Class that defines a compatible search space with GPyOpt package hyper-parameter optimization algorithm
+        :param model: Available model from Model.py
+
+        """
+
+        space = []
+
+        for hyperparam in model.HP_space:
+            hp_initial_value = model.HP_space[hyperparam].value[0]
+            hp_type = model.HP_space[hyperparam].type_name
+
+            space.append({'name': hyperparam, 'type': hp_type,
+                          'domain': (hp_initial_value,)})
+
+        self.space = space
+
+    def __getitem__(self, key):
+        return next(hyperparam for hyperparam in self.space if hyperparam['name'] == key)
 
 
 class Domain:
@@ -214,6 +273,22 @@ class ContinuousDomain(Domain):
 
         super(ContinuousDomain, self).__init__(HPtype.CONTINUOUS)
 
+    def compatible_format(self, tuner_method, label):
+
+        """
+        Build the correct format of a uniform distribution according to the method used by the tuner
+
+        :param tuner_method: Name of the method employed by the HPtuner.
+        :param label: String defining the name of the hyper-parameter
+        :return: Uniform distribution compatible with method used by HPtuner
+        """
+
+        if tuner_method == 'random_search' or tuner_method == 'tpe':
+            return hp.uniform(label, self.lb, self.ub)
+
+        elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
+            return tuple([self.lb, self.ub])
+
 
 class DiscreteDomain(Domain):
 
@@ -229,6 +304,22 @@ class DiscreteDomain(Domain):
 
         super(DiscreteDomain, self).__init__(HPtype.DISCRETE)
 
+    def compatible_format(self, tuner_method, label):
+
+        """
+        Build the correct format of discrete set of values according to the method used by the tuner
+
+        :param tuner_method: Name of the method employed by the HPtuner.
+        :param label: String defining the name of the hyper-parameter
+        :return: Set of values compatible with method used by HPtuner
+        """
+
+        if tuner_method == 'random_search' or tuner_method == 'tpe':
+            return hp.choice(label, self.values)
+
+        elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
+            return tuple(self.values)
+
 
 class CategoricalDomain(Domain):
 
@@ -243,5 +334,18 @@ class CategoricalDomain(Domain):
 
         super(CategoricalDomain, self).__init__(HPtype.CATEGORICAL)
 
+    def compatible_format(self, tuner_method, label):
 
+        """
+        Build the correct format of categorical set of values according to the method used by the tuner
 
+        :param tuner_method: Name of the method employed by the HPtuner.
+        :param label: String defining the name of the hyper-parameter
+        :return: Set of values compatible with method used by HPtuner
+        """
+
+        if tuner_method == 'random_search' or tuner_method == 'tpe':
+            return hp.choice(label, self.values)
+
+        elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
+            return tuple(self.values)
