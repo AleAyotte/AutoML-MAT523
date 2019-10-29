@@ -2,7 +2,7 @@
     @file:              HPtuner.py
     @Author:            Nicolas Raymond
     @Creation Date:     01/10/2019
-    @Last modification: 09/10/2019
+    @Last modification: 29/10/2019
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
@@ -42,7 +42,7 @@ class HPtuner:
 
         :param hp_search_space_dict: Dictionary specifing hyper-parameters to tune and domains
                                      associated to each of them. Each domain must be one among
-                                     ('ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain')
+                                     ('ContinuousDomain', 'DiscreteDomain')
 
         :return: Change hyper-parameter domain in our model attribute
 
@@ -54,25 +54,32 @@ class HPtuner:
     def set_single_hp_space(self, hyperparameter, domain):
 
         """
-        Function that defines hyper-parameter's possible values (or distribution) in our model attribute
+        Function that defines hyper-parameter's possible values (or possible range) in our model attribute
 
         :param hyperparameter: Name of the hyper-parameter
-        :param domain: One domain among ('ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain')
+        :param domain: One domain among ('ContinuousDomain', 'DiscreteDomain')
 
         :return: Change value associate with the hyper-parameter in our model attribute HP_space dictionary
 
         """
 
+        # We look if the domain has a compatible format
         if type(domain).__name__ not in domain_type_list:
             raise Exception('No such space type accepted. Must be in {}'.format(domain_type_list))
 
+        # We verifiy if the hyper-parameter exist in our model
         if hyperparameter not in self.model.HP_space:
             raise Exception('No such hyper-parameter "{}" in our model'.format(hyperparameter))
 
-        if self.model.HP_space[hyperparameter].type != domain.type:
-            print('WARNING, {} type and space type are different'.format(hyperparameter))
-            self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
+        # We verify if the user want to attribute a continous search space to a discrete or categorical hyper-parameter
+        if domain.type < self.model.HP_space[hyperparameter].type:
+            raise Exception('You cannot attribute a continuous search space to a non real hyper-parameter')
 
+        # If the new domain is continuous and the current domain is discrete (or the opposite)
+        # domain type will be changed (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
+        self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
+
+        # We change hyper-parameter's domain
         self.search_space[hyperparameter] = domain.compatible_format(self.method, hyperparameter)
 
     def grid_search(self, loss):
@@ -293,12 +300,12 @@ class GPyOptSearchSpace(SearchSpace):
         Change hyper-parameter type in the search space
 
         :param hp_to_fix: Name of the hyper-parameter which we want to change his type
-        :param new_type: The new type (one among HPtype)
+        :param new_type: The new type (one among DomainType)
         """
 
         for hyperparam in self.space:
             if hyperparam['name'] == hp_to_fix:
-                hyperparam['type'] = new_type
+                hyperparam['type'] = new_type.name
 
 
 @unique
