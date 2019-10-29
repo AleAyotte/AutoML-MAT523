@@ -8,7 +8,7 @@
 
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe, space_eval
-from Code.Model import HPtype
+from enum import Enum, unique
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -194,6 +194,13 @@ class SearchSpace:
     """
 
     def change_hyperparameter_type(self, hyperparam, new_type):
+
+        """
+        Change hyper-parameter type in search space (only useful in GPyOpt search spaces)
+
+        :param hyperparam: Name of the hyperparameter
+        :param new_type: Type from HPtype
+        """
         pass
 
 
@@ -289,6 +296,17 @@ class GPyOptSearchSpace(SearchSpace):
                 hyperparam['type'] = new_type
 
 
+@unique
+class DomainType(Enum):
+
+    """
+    Class containing possible types of hyper-parameters
+
+    """
+    continuous = 1
+    discrete = 3
+
+
 class Domain:
 
     def __init__(self, type):
@@ -319,7 +337,7 @@ class ContinuousDomain(Domain):
         self.lb = lower_bound
         self.ub = upper_bound
 
-        super(ContinuousDomain, self).__init__(HPtype.CONTINUOUS)
+        super(ContinuousDomain, self).__init__(DomainType.continuous)
 
     def compatible_format(self, tuner_method, label):
 
@@ -351,7 +369,7 @@ class DiscreteDomain(Domain):
 
         self.values = possible_values
 
-        super(DiscreteDomain, self).__init__(HPtype.DISCRETE)
+        super(DiscreteDomain, self).__init__(DomainType.discrete)
 
     def compatible_format(self, tuner_method, label):
 
@@ -366,39 +384,6 @@ class DiscreteDomain(Domain):
             return self.values
 
         elif tuner_method == 'random_search' or tuner_method == 'tpe':
-            return hp.choice(label, self.values)
-
-        elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
-            return tuple(self.values)
-
-
-class CategoricalDomain(Domain):
-
-    def __init__(self, possible_values):
-
-        """
-        Class that generates a domain with possible categorical values of an hyper-parameter
-        :param possible_values: list of values
-
-        """
-        self.values = possible_values
-
-        super(CategoricalDomain, self).__init__(HPtype.CATEGORICAL)
-
-    def compatible_format(self, tuner_method, label):
-
-        """
-        Build the correct format of categorical set of values according to the method used by the tuner
-
-        :param tuner_method: Name of the method employed by the HPtuner.
-        :param label: String defining the name of the hyper-parameter
-        :return: Set of values compatible with method used by HPtuner
-        """
-
-        if tuner_method == 'grid_search':
-            return self.values
-
-        if tuner_method == 'random_search' or tuner_method == 'tpe':
             return hp.choice(label, self.values)
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':

@@ -22,9 +22,9 @@ class HPtype(Enum):
     Class containing possible types of hyper-parameters
 
     """
-    DISCRETE = 1
-    CONTINUOUS = 2
-    CATEGORICAL = 3
+    real = 1
+    integer = 2
+    categorical = 3
 
 
 class Hyperparameter:
@@ -35,22 +35,13 @@ class Hyperparameter:
         Class that defines an hyper-parameter
 
         :param name: Name of the hyper-parameter
-        :param type: One type out of HPtype (DISCRETE, CONTINUOUS, CATEGORICAL)
+        :param type: One type out of HPtype (real,.integer, categorical)
         :param value: List with the value of the hyper-parameter
 
         """
         self.name = name
         self.type = type
         self.value = value
-
-        if self.type == HPtype.DISCRETE:
-            self.type_name = 'discrete'
-
-        elif self.type == HPtype.CONTINUOUS:
-            self.type_name = 'continuous'
-
-        else:
-            self.type_name = 'categorical'
 
 
 class Model:
@@ -183,26 +174,26 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
-                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel]),
-                                       'gamma': Hyperparameter('gamma', HPtype.CONTINUOUS, [gamma])})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel]),
+                                       'gamma': Hyperparameter('gamma', HPtype.real, [gamma])})
 
         elif kernel == 'linear':
-            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
-                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel])})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel])})
 
         elif kernel == 'poly':
-            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
-                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel]),
-                                       'degree': Hyperparameter('degree', HPtype.DISCRETE, [degree]),
-                                       'gamma': Hyperparameter('gamma', HPtype.CONTINUOUS, [gamma]),
-                                       'coef0': Hyperparameter('coef0', HPtype.CONTINUOUS, [coef0])})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel]),
+                                       'degree': Hyperparameter('degree', HPtype.integer, [degree]),
+                                       'gamma': Hyperparameter('gamma', HPtype.real, [gamma]),
+                                       'coef0': Hyperparameter('coef0', HPtype.real, [coef0])})
 
         elif kernel == 'sigmoid':
-            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.CONTINUOUS, [C]),
-                                       'kernel': Hyperparameter('kernel', HPtype.CATEGORICAL, [kernel]),
-                                       'gamma': Hyperparameter('gamma', HPtype.CONTINUOUS, [gamma]),
-                                       'coef0': Hyperparameter('coef0', HPtype.CONTINUOUS, [coef0])})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel]),
+                                       'gamma': Hyperparameter('gamma', HPtype.real, [gamma]),
+                                       'coef0': Hyperparameter('coef0', HPtype.real, [coef0])})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
@@ -279,33 +270,33 @@ class MLP(Model):
 
         if solver == 'adam':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.CATEGORICAL, [hidden_layer_sizes]),
-                 'activation': Hyperparameter('activation', HPtype.CATEGORICAL, [activation]),
-                 'solver': Hyperparameter('solver', HPtype.CATEGORICAL, [solver]),
-                 'alpha': Hyperparameter('alpha', HPtype.CONTINUOUS, [alpha]),
-                 'batch_size': Hyperparameter('batch_size', HPtype.DISCRETE, [batch_size]),
-                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.CONTINUOUS, [learning_rate_init]),
-                 'beta_1': Hyperparameter('beta_1', HPtype.CONTINUOUS, [beta_1]),
-                 'beta_2': Hyperparameter('beta_2', HPtype.CONTINUOUS, [beta_2])})
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.real, [alpha]),
+                 'batch_size': Hyperparameter('batch_size', HPtype.integer, [batch_size]),
+                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.real, [learning_rate_init]),
+                 'beta_1': Hyperparameter('beta_1', HPtype.real, [beta_1]),
+                 'beta_2': Hyperparameter('beta_2', HPtype.real, [beta_2])})
 
         elif solver == 'sgd':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.CATEGORICAL, [hidden_layer_sizes]),
-                 'activation': Hyperparameter('activation', HPtype.CATEGORICAL, [activation]),
-                 'solver': Hyperparameter('solver', HPtype.CATEGORICAL, [solver]),
-                 'alpha': Hyperparameter('alpha', HPtype.CONTINUOUS, [alpha]),
-                 'batch_size': Hyperparameter('batch_size', HPtype.DISCRETE, [batch_size]),
-                 'learning_rate': Hyperparameter('learning_rate', HPtype.CATEGORICAL, [learning_rate]),
-                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.CONTINUOUS, [learning_rate_init]),
-                 'power_t': Hyperparameter('power_t', HPtype.CONTINUOUS, [power_t]),
-                 'momentum': Hyperparameter('momentum', HPtype.CONTINUOUS, [momentum])})
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.real, [alpha]),
+                 'batch_size': Hyperparameter('batch_size', HPtype.integer, [batch_size]),
+                 'learning_rate': Hyperparameter('learning_rate', HPtype.categorical, [learning_rate]),
+                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.real, [learning_rate_init]),
+                 'power_t': Hyperparameter('power_t', HPtype.real, [power_t]),
+                 'momentum': Hyperparameter('momentum', HPtype.real, [momentum])})
 
         elif solver == 'lbfgs':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.CATEGORICAL, [hidden_layer_sizes]),
-                 'activation': Hyperparameter('activation', HPtype.CATEGORICAL, [activation]),
-                 'solver': Hyperparameter('solver', HPtype.CATEGORICAL, [solver]),
-                 'alpha': Hyperparameter('alpha', HPtype.CONTINUOUS, [alpha])})
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.real, [alpha])})
 
     def fit(self, X_train, t_train):
 
