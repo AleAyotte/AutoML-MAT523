@@ -72,7 +72,7 @@ class HPtuner:
             raise Exception('No such hyper-parameter "{}" in our model'.format(hyperparameter))
 
         # We verify if the user want to attribute a continous search space to a discrete or categorical hyper-parameter
-        if domain.type < self.model.HP_space[hyperparameter].type:
+        if domain.type.value < self.model.HP_space[hyperparameter].type.value:
             raise Exception('You cannot attribute a continuous search space to a non real hyper-parameter')
 
         # If the new domain is continuous and the current domain is discrete (or the opposite)
