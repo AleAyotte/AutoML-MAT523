@@ -8,6 +8,7 @@
 
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe, space_eval
+from Code.Model import HPtype
 from enum import Enum, unique
 
 
@@ -265,11 +266,15 @@ class GPyOptSearchSpace(SearchSpace):
         space = []
 
         for hyperparam in model.HP_space:
-            hp_initial_value = model.HP_space[hyperparam].value[0]
-            hp_type = model.HP_space[hyperparam].type_name
 
-            space.append({'name': hyperparam, 'type': hp_type,
-                          'domain': (hp_initial_value,)})
+            hp_initial_value = model.HP_space[hyperparam].value[0]
+
+            if model.HP_space[hyperparam].type == HPtype.categorical:
+
+                space.append({'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)})
+
+            else:
+                space.append({'name': hyperparam, 'type': 'discrete', 'domain': (hp_initial_value,)})
 
         self.space = space
 
@@ -314,7 +319,7 @@ class Domain:
         """
         Abstract (parent) class that represents a domain for hyper-parameter's possible values
 
-        :param type: One type of domain among HPtype (CONTINUOUS, DISCRETE, CATEGORICAL)
+        :param type: One type of domain among DomainType
         """
         self.type = type
 
