@@ -232,7 +232,6 @@ class SVM(Model):
         self.model_frame.set_params(**hyperparams)
 
 
-
 class MLP(Model):
 
     def __init__(self, hidden_layer_sizes=(100, ), activation='relu', solver='adam', alpha=0.0001, batch_size='auto',
