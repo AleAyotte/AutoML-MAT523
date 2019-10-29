@@ -17,7 +17,6 @@ import torch
 import torch.nn.functional as F
 import time
 
-
 class Model:
 
     def __init__(self, HP_Dict):
@@ -239,6 +238,7 @@ class CnnVanilla(Model, torch.nn.Module):
         :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
                            [i, 0]: Number of output channels of the ith layer
                            [i, 1]: Square convolution dimension of the ith layer
+                           [i, 2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
         :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
                           [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
                           [i, 1]: Pooling kernel height
@@ -300,6 +300,7 @@ class CnnVanilla(Model, torch.nn.Module):
         :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
                            [i, 0]: Number of output channels of the ith layer
                            [i, 1]: Square convolution dimension of the ith layer
+                           [i, 2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
         :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
                           [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
                           [i, 1]: Pooling kernel height
@@ -310,15 +311,20 @@ class CnnVanilla(Model, torch.nn.Module):
         """
 
         # First convolutional layer
-        self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1]))
+        self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1],
+                                              padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])
+                                              ))
 
         # We need to compute the input size of the fully connected layer
-        size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], pool_list[0])
+        size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], conv_layer[0, 2], pool_list[0])
 
         # All others convolutional layers
         for it in range(1, len(conv_layer)):
-            self.cnn_layer.append(torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1]))
-            size = self.conv_out_size(size, conv_layer[it, 1], pool_list[it])  # Update the output size
+            self.cnn_layer.append(torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1],
+                                                  padding=self.pad_size(conv_layer[it, 1], conv_layer[it, 2])
+                                                  ))
+            # Update the output size
+            size = self.conv_out_size(size, conv_layer[it, 1], conv_layer[it, 2], pool_list[it])
 
         # Compute the fully connected input layer size
         self.num_flat_features = size[0] * size[1] * conv_layer[-1, 0]
@@ -334,13 +340,14 @@ class CnnVanilla(Model, torch.nn.Module):
         self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
 
     @staticmethod
-    def conv_out_size(in_size, conv_size, pool):
+    def conv_out_size(in_size, conv_size, conv_type, pool):
 
         """
         Calculate the output resulting of a convolution layer and it corresponding pooling layer
 
         :param in_size: A numpy array of length 2 that represent the input image size. (height, width)
         :param conv_size: The convolutional kernel size as integer
+        :param conv_type:  Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
         :param pool: A numpy array of length 3 that represent pooling layer parameters. (type, height, width)
         :return: A numpy array of length 2 that represent the output image size. (height, width)
         """
@@ -349,7 +356,10 @@ class CnnVanilla(Model, torch.nn.Module):
             raise Exception("Convolutional kernel of size 0")
 
         # In case of no padding out_size = in_size - (kernel_size - 1)
-        out_size = in_size - conv_size + 1
+        if conv_type == 0:
+            out_size = in_size - conv_size + 1
+        else:
+            out_size = in_size
 
         if np.any(pool[1:] == 0) & pool[0] != 0:
             raise Exception("Pooling kernel of size: {}, {}".format(pool[1], pool[2]))
@@ -358,6 +368,36 @@ class CnnVanilla(Model, torch.nn.Module):
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
 
         return out_size.astype(int)
+
+    @staticmethod
+    def pad_size(conv_size, conv_type):
+
+        """
+        Compute the zero padding to add to each side of a dimension
+
+        :param conv_size: Size of the kernel size as integer (Exemple: 3 for a kernel of 3x3)
+        :param conv_type: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
+        :return: Number of padding cells to add on each side of the image.
+        """
+
+        if conv_type == 1:
+            return int((conv_size - 1)/2)
+        else:
+            return 0
+
+    def set_hparams(self, n_hparams):
+
+        """
+        Function that set the new hyperparameters
+
+        :param n_hparams: Dictionary specifing hyper-parameters to change.
+        """
+
+        for hp in n_hparams:
+            if hp in self.hparams:
+                self.hparams[hp] = n_hparams[hp]
+            else:
+                raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
 
     def forward(self, x):
 
