@@ -16,6 +16,38 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import time
+from sklearn.model_selection import train_test_split
+from enum import Enum, unique
+
+
+@unique
+class HPtype(Enum):
+
+    """
+    Class containing possible types of hyper-parameters
+
+    """
+    real = 1
+    integer = 2
+    categorical = 3
+
+
+class Hyperparameter:
+
+    def __init__(self, name, type, value=None):
+        """
+
+        Class that defines an hyper-parameter
+
+        :param name: Name of the hyper-parameter
+        :param type: One type out of HPtype (real,.integer, categorical)
+        :param value: List with the value of the hyper-parameter
+
+        """
+        self.name = name
+        self.type = type
+        self.value = value
+
 
 class Model:
 
@@ -24,10 +56,21 @@ class Model:
         """
         Class that generates a model to solve a classification problem
 
-        :param HP_Dict: Dictionary containing all hyperparameters of the model
+        :param HP_Dict: Dictionary containing all hyper-parameters of the model
 
         """
         self.HP_space = HP_Dict
+
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Change hyper-parameters of our model
+
+        :param hyperparams: Dictionary of hyper-parameters to change
+
+        """
+
+        raise NotImplementedError
 
     def fit(self, X_train, t_train):
 
@@ -54,15 +97,35 @@ class Model:
 
         raise NotImplementedError
 
-    def score(self, X, t):
+    def score(self):
 
         """
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t: Nx1 numpy array of classes associated with each observation
         :return: Good classification rate
+        """
+
+        raise NotImplementedError
+
+    def cross_validation(self, X_train, t_train, nb_of_cross_validation=3):
 
         """
-        raise NotImplementedError
+
+        :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t_train: Nx1 numpy array of classes associated with each observation
+        :param nb_of_cross_validation:  Number of data splits and validation to execute
+        :return: Mean of score (accuracy)
+
+        """
+        res = np.array([])
+
+        for i in range(nb_of_cross_validation):
+
+            x_train, x_test, y_train, y_test = train_test_split(X_train, t_train, test_size=0.2)
+            self.fit(x_train, y_train)
+            res = np.append(res, self.score(x_test, y_test))
+
+        return np.mean(res)
 
     def plot_data(self, data, classes):
 
@@ -75,7 +138,7 @@ class Model:
         """
 
         if data.shape[1] != 2:
-            raise Exception('Method only available for 2D plotting (two dimensions datasets')
+            raise Exception('Method only available for 2D plotting (two dimensions datasets)')
 
         else:
             ix = np.arange(data[:, 0].min(), data[:, 0].max(), 0.01)
@@ -98,9 +161,9 @@ class SVM(Model):
         """
         Class that generates a support vector machine
 
-        Some hyperparameters are conditional to others!
+        Some hyper-parameters are conditional to others!
         Take a look at https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC for
-        more informations on hyperparameters
+        more information on hyper-parameters
 
         :param C: Penalty parameter C of the error term
         :param kernel: Kernel type to be used in the algorithm. It must be one of ‘linear’, ‘poly’, ‘rbf’ or ‘sigmoid’
@@ -112,16 +175,26 @@ class SVM(Model):
         self.model_frame = svm.SVC(C, kernel, degree, gamma, coef0, max_iter=max_iter)
 
         if kernel == 'rbf':
-            super().__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma]})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel]),
+                                       'gamma': Hyperparameter('gamma', HPtype.real, [gamma])})
 
         elif kernel == 'linear':
-            super().__init__({'C': [C], 'kernel': [kernel]})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel])})
 
         elif kernel == 'poly':
-            super().__init__({'C': [C], 'kernel': [kernel], 'degree': [degree], 'gamma': [gamma], 'coef0': [coef0]})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel]),
+                                       'degree': Hyperparameter('degree', HPtype.integer, [degree]),
+                                       'gamma': Hyperparameter('gamma', HPtype.real, [gamma]),
+                                       'coef0': Hyperparameter('coef0', HPtype.real, [coef0])})
 
         elif kernel == 'sigmoid':
-            super().__init__({'C': [C], 'kernel': [kernel], 'gamma': [gamma], 'coef0': [coef0]})
+            super(SVM, self).__init__({'C': Hyperparameter('C', HPtype.real, [C]),
+                                       'kernel': Hyperparameter('kernel', HPtype.categorical, [kernel]),
+                                       'gamma': Hyperparameter('gamma', HPtype.real, [gamma]),
+                                       'coef0': Hyperparameter('coef0', HPtype.real, [coef0])})
 
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
@@ -163,6 +236,16 @@ class SVM(Model):
 
         return ((diff == 0).sum()) / len(diff)  # (Nb of good predictions / nb of predictions)
 
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Change hyper-parameters of our model
+
+        :param hyperparams: Dictionary of hyper-parameters to change
+        """
+
+        self.model_frame.set_params(**hyperparams)
+
 
 class MLP(Model):
 
@@ -175,8 +258,8 @@ class MLP(Model):
 
         This model optimizes the log-loss function using LBFGS or stochastic gradient descent.
 
-        Some hyperparameters are conditional to others!
-        For more informations take a look at :
+        Some hyper-parameters are conditional to others!
+        For more information take a look at :
         https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html#sklearn.neural_network.MLPClassifier
 
         :param hidden_layer_sizes: The ith element represents the number of neurons in the ith hidden layer
@@ -194,25 +277,39 @@ class MLP(Model):
         """
 
         self.model_frame = nn.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
-                                            alpha=alpha, batch_size=batch_size,learning_rate=learning_rate,
+                                            alpha=alpha, batch_size=batch_size, learning_rate=learning_rate,
                                             learning_rate_init=learning_rate_init, power_t=power_t, max_iter=max_iter,
                                             momentum=momentum, beta_1=beta_1, beta_2=beta_2)
 
         if solver == 'adam':
-            super().__init__(
-                {'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation], 'solver': [solver],
-                 'alpha': [alpha], 'batch_size': [batch_size], 'learning_rate_init': [learning_rate_init],
-                 'beta_1': [beta_1], 'beta_2': [beta_2]})
+            super(MLP, self).__init__(
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.real, [alpha]),
+                 'batch_size': Hyperparameter('batch_size', HPtype.integer, [batch_size]),
+                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.real, [learning_rate_init]),
+                 'beta_1': Hyperparameter('beta_1', HPtype.real, [beta_1]),
+                 'beta_2': Hyperparameter('beta_2', HPtype.real, [beta_2])})
 
         elif solver == 'sgd':
-            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
-                              'solver': [solver], 'alpha': [alpha], 'batch_size': [batch_size],
-                              'learning_rate': [learning_rate], 'learning_rate_init': [learning_rate_init],
-                              'power_t': [power_t], 'momentum': [momentum]})
+            super(MLP, self).__init__(
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.real, [alpha]),
+                 'batch_size': Hyperparameter('batch_size', HPtype.integer, [batch_size]),
+                 'learning_rate': Hyperparameter('learning_rate', HPtype.categorical, [learning_rate]),
+                 'learning_rate_init': Hyperparameter('learning_rate_init', HPtype.real, [learning_rate_init]),
+                 'power_t': Hyperparameter('power_t', HPtype.real, [power_t]),
+                 'momentum': Hyperparameter('momentum', HPtype.real, [momentum])})
 
         elif solver == 'lbfgs':
-            super().__init__({'hidden_layer_sizes': [hidden_layer_sizes], 'activation': [activation],
-                              'solver': [solver], 'alpha': [alpha]})
+            super(MLP, self).__init__(
+                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                 'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
+                 'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
+                 'alpha': Hyperparameter('alpha', HPtype.real, [alpha])})
 
     def fit(self, X_train, t_train):
 
@@ -249,6 +346,15 @@ class MLP(Model):
         diff = t - predictions
 
         return ((diff == 0).sum()) / len(diff)  # (Nb of good predictions / nb of predictions)
+
+    def set_hyperparameters(self, hyperparams):
+        """
+        Change hyper-parameters of our model
+
+        :param hyperparams: Dictionary of hyper-parameters to change
+        """
+
+        self.model_frame.set_params(**hyperparams)
 
 
 class CnnVanilla(Model, torch.nn.Module):
@@ -409,17 +515,17 @@ class CnnVanilla(Model, torch.nn.Module):
         else:
             return 0
 
-    def set_hparams(self, n_hparams):
+    def set_hyperparameters(self, hyperparams):
 
         """
         Function that set the new hyperparameters
 
-        :param n_hparams: Dictionary specifing hyper-parameters to change.
+        :param hyperparams: Dictionary specifing hyper-parameters to change.
         """
 
-        for hp in n_hparams:
+        for hp in hyperparams:
             if hp in self.hparams:
-                self.hparams[hp] = n_hparams[hp]
+                self.hparams[hp] = hyperparams[hp]
             else:
                 raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
 
