@@ -10,6 +10,7 @@ from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe, space_eval
 from Code.Model import HPtype
 from enum import Enum, unique
+from copy import deepcopy
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -32,6 +33,7 @@ class HPtuner:
         self.model = model
         self.method = method
         self.search_space = self.search_space_ignition(method, model)
+        self.search_space_modified = False
 
     def set_search_space(self, hp_search_space_dict):
 
@@ -48,6 +50,11 @@ class HPtuner:
 
         """
 
+        # We reset search space to default if it has been modified (the state at the ignition)
+        if self.search_space_modified:
+            self.search_space.reset()
+
+        # We set every search space one by one
         for hyperparam in hp_search_space_dict:
             self.set_single_hp_space(hyperparam, hp_search_space_dict[hyperparam])
 
@@ -59,7 +66,7 @@ class HPtuner:
         :param hyperparameter: Name of the hyper-parameter
         :param domain: One domain among ('ContinuousDomain', 'DiscreteDomain')
 
-        :return: Change value associate with the hyper-parameter in our model attribute HP_space dictionary
+        :return: Change value associated with the hyper-parameter in our model attribute HP_space dictionary
 
         """
 
@@ -152,7 +159,7 @@ class HPtuner:
     def search_space_ignition(method, model):
 
         """
-        Define a correct search space format according to optimization method
+        Define a correct search space format according to optimization method.
 
         :return: Search space frame for our tuner
 
@@ -197,9 +204,22 @@ class HPtuner:
 
 class SearchSpace:
 
-    """
-    Definition of a search space for our hyper-parameters
-    """
+    def __init__(self, space):
+
+        """
+        Definition of a search space for our hyper-parameters
+        """
+
+        self.default_space = space
+        self.space = space
+
+    def reset(self):
+
+        """
+        Reset search space to default
+        """
+
+        self.space = deepcopy(self.default_space)
 
     def change_hyperparameter_type(self, hyperparam, new_type):
 
@@ -210,6 +230,12 @@ class SearchSpace:
         :param new_type: Type from HPtype
         """
         pass
+
+    def __getitem__(self, key):
+        return self.space[key]
+
+    def __setitem__(self, key, value):
+        self.space[key] = value
 
 
 class HyperoptSearchSpace(SearchSpace):
@@ -222,18 +248,22 @@ class HyperoptSearchSpace(SearchSpace):
 
         """
 
-        hp_dict = {}
+        space = {}
 
         for hyperparam in model.HP_space:
-            hp_dict[hyperparam] = hp.choice(hyperparam, model.HP_space[hyperparam].value)
+            space[hyperparam] = hp.choice(hyperparam, model.HP_space[hyperparam].value)
 
-        self.space = hp.choice('space', [hp_dict])
+        super(HyperoptSearchSpace, self).__init__(space)
 
-    def __getitem__(self, key):
-        return self.space['space'][key]
+    def reformat_for_tuning(self):
 
-    def __setitem__(self, key, value):
-        self.space['space'][key] = value
+        """
+        Insert the whole built space in a hp.choice object that can now be pass as a space parameter
+        in Hyperopt hyper-parameter optimization algorithm
+
+        """
+
+        self.space = hp.choice('space', self.space)
 
 
 class SklearnSearchSpace(SearchSpace):
@@ -251,13 +281,7 @@ class SklearnSearchSpace(SearchSpace):
         for hyperparam in model.HP_space:
             space[hyperparam] = model.HP_space[hyperparam].value
 
-        self.space = space
-
-    def __getitem__(self, key):
-        return self.space[key]
-
-    def __setitem__(self, key, value):
-        self.space[key] = value
+        super(SklearnSearchSpace, self).__init__(space)
 
 
 class GPyOptSearchSpace(SearchSpace):
@@ -270,7 +294,7 @@ class GPyOptSearchSpace(SearchSpace):
 
         """
 
-        space = []
+        space = {}
 
         for hyperparam in model.HP_space:
 
@@ -278,21 +302,12 @@ class GPyOptSearchSpace(SearchSpace):
 
             if model.HP_space[hyperparam].type == HPtype.categorical:
 
-                space.append({'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)})
+                space[hyperparam] = {'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)}
 
             else:
-                space.append({'name': hyperparam, 'type': 'discrete', 'domain': (hp_initial_value,)})
+                space[hyperparam] = {'name': hyperparam, 'type': 'discrete', 'domain': (hp_initial_value,)}
 
-        self.space = space
-
-    def __getitem__(self, key):
-        return next(hyperparam['domain'] for hyperparam in self.space if hyperparam['name'] == key)
-
-    def __setitem__(self, key, value):
-
-        for hyperparam in self.space:
-            if hyperparam['name'] == key:
-                hyperparam['domain'] = value
+        super(GPyOptSearchSpace, self).__init__(space)
 
     def change_hyperparameter_type(self, hp_to_fix, new_type):
 
@@ -303,9 +318,17 @@ class GPyOptSearchSpace(SearchSpace):
         :param new_type: The new type (one among DomainType)
         """
 
-        for hyperparam in self.space:
-            if hyperparam['name'] == hp_to_fix:
-                hyperparam['type'] = new_type.name
+        self[hp_to_fix] = new_type
+
+    def reformat_for_tuning(self):
+
+        """
+        Insert the whole built space in a hp.choice object that can now be pass as a space parameter
+        in Hyperopt hyper-parameter optimization algorithm
+
+        """
+
+        self.space = self.space.values()
 
 
 @unique
