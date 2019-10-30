@@ -62,11 +62,7 @@ class Model:
         :return: Good classification rate
 
         """
-        predictions = self.predict(X)
-
-        diff = t - predictions
-
-        return ((diff == 0).sum())/len(diff)  # (Nb of good predictions / nb of predictions)
+        raise NotImplementedError
 
     def plot_data(self, data, classes):
 
@@ -153,6 +149,20 @@ class SVM(Model):
 
         return self.model_frame.predict(X)
 
+    def score(self, X, t):
+
+        """
+        :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t: Nx1 numpy array of classes associated with each observation
+        :return: Good classification rate
+
+        """
+        predictions = self.predict(X)
+
+        diff = t - predictions
+
+        return ((diff == 0).sum()) / len(diff)  # (Nb of good predictions / nb of predictions)
+
 
 class MLP(Model):
 
@@ -225,6 +235,20 @@ class MLP(Model):
         """
 
         return self.model_frame.predict(X)
+
+    def score(self, X, t):
+
+        """
+        :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t: Nx1 numpy array of classes associated with each observation
+        :return: Good classification rate
+
+        """
+        predictions = self.predict(X)
+
+        diff = t - predictions
+
+        return ((diff == 0).sum()) / len(diff)  # (Nb of good predictions / nb of predictions)
 
 
 class CnnVanilla(Model, torch.nn.Module):
