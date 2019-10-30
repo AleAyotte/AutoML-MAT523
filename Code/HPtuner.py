@@ -126,8 +126,8 @@ class HPtuner:
         """
 
         # We find the selection of best hyperparameters according to random_search
-        best_hyperparams = fmin(fn=loss, space=self.search_space, algo=rand.suggest, max_evals=n_evals)
-        best_hyperparams = space_eval(self.search_space, best_hyperparams)
+        best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=n_evals)
+        best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
 
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
@@ -141,6 +141,9 @@ class HPtuner:
         :param t: Nx1 numpy array of target values associated with each observation
         :param n_evals: Number of evaluations to do. Only considered if method is 'random_search'
         """
+
+        # We reformat the search space
+        self.search_space.reformat_for_tuning()
 
         # We build loss function
         loss = self.build_loss_funct(X, t)
@@ -231,6 +234,13 @@ class SearchSpace:
         """
         pass
 
+    def reformat_for_tuning(self):
+
+        """
+        Reformat search space so it is now compatible with hyper-parameter optimization method
+        """
+        pass
+
     def __getitem__(self, key):
         return self.space[key]
 
@@ -263,7 +273,7 @@ class HyperoptSearchSpace(SearchSpace):
 
         """
 
-        self.space = hp.choice('space', self.space)
+        self.space = hp.choice('space', [self.space])
 
 
 class SklearnSearchSpace(SearchSpace):
@@ -323,9 +333,7 @@ class GPyOptSearchSpace(SearchSpace):
     def reformat_for_tuning(self):
 
         """
-        Insert the whole built space in a hp.choice object that can now be pass as a space parameter
-        in Hyperopt hyper-parameter optimization algorithm
-
+        Convert the dictionnary to a list containing only internal dictionaries
         """
 
         self.space = self.space.values()
