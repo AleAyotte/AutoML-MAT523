@@ -11,6 +11,7 @@ from hyperopt import hp, fmin, rand, tpe, space_eval
 from Code.Model import HPtype
 from enum import Enum, unique
 from copy import deepcopy
+from tqdm import tqdm
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -108,10 +109,15 @@ class HPtuner:
         lowest_lost = loss(best_hyperparams)
 
         # We find the selection of best hyperparameters according to grid_search
+        pbar = tqdm(total=len(all_configs), postfix='best loss : ' + str(lowest_lost))
+
         for config in all_configs:
             current_loss = loss(config)
             if current_loss < lowest_lost:
+                lowest_lost = current_loss
                 best_hyperparams = config
+                pbar.postfix = 'Best loss' + str(lowest_lost)
+            pbar.update()
 
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
@@ -132,7 +138,7 @@ class HPtuner:
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
 
-    def tune(self, X, t, n_evals=10):
+    def tune(self, X, t, n_evals=10, nb_cross_validation=1):
 
         """
         Optimize model's hyperparameters with the method specified at the ignition of our tuner
@@ -140,13 +146,14 @@ class HPtuner:
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
         :param n_evals: Number of evaluations to do. Only considered if method is 'random_search'
+        :param nb_cross_validation: Number of cross validation done for loss calculation
         """
 
         # We reformat the search space
         self.search_space.reformat_for_tuning()
 
         # We build loss function
-        loss = self.build_loss_funct(X, t)
+        loss = self.build_loss_funct(X, t, nb_cross_validation)
 
         # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
@@ -183,7 +190,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def build_loss_funct(self, X, t, nb_of_cross_validation=3):
+    def build_loss_funct(self, X, t, nb_of_cross_validation):
 
         """
         Build a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
