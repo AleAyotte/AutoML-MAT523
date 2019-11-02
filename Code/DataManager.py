@@ -8,6 +8,7 @@
 
 from sklearn.datasets import make_moons
 from sklearn.datasets import make_circles
+from sklearn.model_selection import train_test_split
 import numpy as np
 import math
 import copy
@@ -131,6 +132,35 @@ def dataset_to_loader(dataset, b_size=12, shuffle=False):
     data_loader = utils.DataLoader(dataset, batch_size=b_size, shuffle=shuffle, drop_last=True)
 
     return data_loader
+
+
+def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
+    """
+    Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
+    arrays respectively.
+
+    :param features: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+    :param labels: Nx1 numpy array of classes associated with each observation
+    :param dtset: A torch dataset which contain our train data points and labels
+    :param valid_size: Proportion of the dataset that will be use as validation data
+    :return: train and valid features as numpy arrays and train and valid labels as numpy arrays if features and labels
+             numpy arrays are given but no torch dataset. Train and valid torch datasets if a torch dataset is given.
+    """
+
+    if dtset is None:
+        if features is None or labels is None:
+            raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                features is None, labels is None, dtset is None))
+        else:
+            # x_train, x_valid, t_train, t_valid
+            return train_test_split(features, labels, test_size=valid_size)
+    else:
+        num_data = len(dtset)
+        num_valid = math.floor(num_data * valid_size)
+        num_train = num_data - num_valid
+
+        # d_train, d_valid
+        return utils.dataset.random_split(dtset, [num_train, num_valid])
 
 
 def load_cifar10():
