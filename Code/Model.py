@@ -57,8 +57,8 @@ class Model:
         Class that generates a model to solve a classification problem
 
         :param HP_Dict: Dictionary containing all hyper-parameters of the model
-
         """
+
         self.HP_space = HP_Dict
 
     def set_hyperparameters(self, hyperparams):
@@ -66,13 +66,14 @@ class Model:
         """
         Change hyper-parameters of our model
 
-        :param hyperparams: Dictionary of hyper-parameters to change
+        Note that it will be override by the children's classes
 
+        :param hyperparams: Dictionary of hyper-parameters to change
         """
 
         raise NotImplementedError
 
-    def fit(self, X_train, t_train):
+    def fit(self, X_train=None, t_train=None, dtset=None):
 
         """
         Train our model
@@ -81,7 +82,7 @@ class Model:
 
         :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t_train: Nx1 numpy array of classes associated with each observation
-
+        :param dtset: A torch dataset which contain our train data points and labels
         """
 
         raise NotImplementedError
@@ -122,8 +123,8 @@ class Model:
         :param t_train: Nx1 numpy array of classes associated with each observation
         :param nb_of_cross_validation:  Number of data splits and validation to execute
         :return: Mean of score (accuracy)
-
         """
+
         res = np.array([])
 
         for i in range(nb_of_cross_validation):
@@ -137,7 +138,6 @@ class Model:
     def plot_data(self, data, classes):
 
         """
-
         Plot data points and spaces of separation done by the model for 2D cases only.
 
         :param data: Nx2 numpy array of observations {N : nb of obs}
@@ -206,14 +206,23 @@ class SVM(Model):
         else:
             raise Exception('No such kernel ("{}") implemented'.format(kernel))
 
-    def fit(self, X_train, t_train):
+    def fit(self, X_train=None, t_train=None, dtset=None):
 
         """
         Train our model
 
         :param X_train: NxD numpy array of the observations of the training set {N : nb of obs, D : nb of dimensions}
         :param t_train: Nx1 numpy array of classes associated with each observation in the training set
+        :param dtset: A torch dataset which contain our train data points and labels
         """
+
+        if X_train is None or t_train is None:
+            if dtset is None:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X_train is None, t_train is None, dtset is None))
+            else:
+                X_train = dtset.data
+                t_train = dtset.targets
 
         self.model_frame.fit(X_train, t_train)
 
@@ -328,14 +337,23 @@ class MLP(Model):
                  'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
                  'alpha': Hyperparameter('alpha', HPtype.real, [alpha])})
 
-    def fit(self, X_train, t_train):
+    def fit(self, X_train=None, t_train=None, dtset=None):
 
         """
         Train our model
 
         :param X_train: NxD numpy array of the observations of the training set
         :param t_train: Nx1 numpy array classes associated with each observations in the training set
+        :param dtset: A torch dataset which contain our train data points and labels
         """
+
+        if X_train is None or t_train is None:
+            if dtset is None:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X_train is None, t_train is None, dtset is None))
+            else:
+                X_train = dtset.data
+                t_train = dtset.targets
 
         self.model_frame.fit(X_train, t_train)
 
@@ -413,6 +431,7 @@ class CnnVanilla(Model, torch.nn.Module):
         """
 
         Model.__init__(self, {"lr": [lr], "alpha": [alpha], "eps": [eps], "dropout": [drop_rate], "b_size": [b_size]})
+
         torch.nn.Module.__init__(self)
 
         # Base parameters (Parameters that will not change during training or hyperparameters search)
@@ -613,20 +632,30 @@ class CnnVanilla(Model, torch.nn.Module):
 
         self.to(self.device_)
 
-    def fit(self, dtset, verbose=False, gpu=False):
+    def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=False):
 
         """
         Train our model
 
-        :param dtset:
+        :param X_train: NxD numpy array of the observations of the training set
+        :param t_train: Nx1 numpy array classes associated with each observations in the training set
+        :param dtset: A torch dataset which contain our train data points and labels
         :param verbose: print the loss during training
         :param gpu: True: Train the model on the gpu. False: Train the model on the cpu
         """
 
+        if dtset is None:
+            if X_train is None or t_train is None:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X_train is None, t_train is None, dtset is None))
+            else:
+                train_loader = Dm.create_dataloader(X, t, self.hparams["b_size"], shuffle=True)
+        else:
+            train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
+
         if gpu:
             self.switch_device("gpu")
 
-        train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["alpha"],
                                      eps=self.hparams["eps"], amsgrad=False)
         begin = time.time()
