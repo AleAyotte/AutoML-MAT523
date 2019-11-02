@@ -91,17 +91,24 @@ class Model:
         """
         Predict classes for our observations in the input array X
 
+        Note that it will be override by the children's classes
+
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :return: Nx1 numpy array of classes predicted for each observation
         """
 
         raise NotImplementedError
 
-    def score(self):
+    def score(self, X=None, t=None, dtset=None):
 
         """
+        Compute the model accuracy over a given test dataset.
+
+        Note that it will be override by the children's classes
+
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t: Nx1 numpy array of classes associated with each observation
+        :param dtset: A torch dataset which contain our test data points and labels
         :return: Good classification rate
         """
 
@@ -217,19 +224,29 @@ class SVM(Model):
 
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :return: Nx1 numpy array of classes predicted for each observation
-
         """
 
         return self.model_frame.predict(X)
 
-    def score(self, X, t):
+    def score(self, X=None, t=None, dtset=None):
 
         """
+        Compute the model accuracy over a given test dataset.
+
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t: Nx1 numpy array of classes associated with each observation
+        :param dtset: A torch dataset which contain our test data points and labels
         :return: Good classification rate
-
         """
+
+        if X is None or t is None:
+            if dtset is None:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X is None, t is None, dtset is None))
+            else:
+                X = dtset.data
+                t = dtset.targets
+
         predictions = self.predict(X)
 
         diff = t - predictions
@@ -333,14 +350,25 @@ class MLP(Model):
 
         return self.model_frame.predict(X)
 
-    def score(self, X, t):
+    def score(self, X=None, t=None, dtset=None):
 
         """
+        Compute the model accuracy over a given test dataset.
+
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t: Nx1 numpy array of classes associated with each observation
+        :param dtset: A torch dataset which contain our test data points and labels
         :return: Good classification rate
-
         """
+
+        if X is None or t is None:
+            if dtset is None:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X is None, t is None, dtset is None))
+            else:
+                X = dtset.data
+                t = dtset.targets
+
         predictions = self.predict(X)
 
         diff = t - predictions
@@ -641,16 +669,25 @@ class CnnVanilla(Model, torch.nn.Module):
             out = torch.Tensor.cpu(self.soft(self(X))).numpy()
         return np.argmax(out, axis=1)
 
-    def score(self, dtset):
+    def score(self, X=None, t=None, dtset=None):
 
         """
         Compute the accuracy of the model on a given test dataset
 
+        :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+        :param t: Nx1 numpy array of classes associated with each observation
         :param dtset: A torch dataset which contain our test data points and labels
         :return: The accuracy of the model.
         """
 
-        test_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=False)
+        if dtset is None:
+            if X is None or t is None:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X is None, t is None, dtset is None))
+            else:
+                test_loader = Dm.create_dataloader(X, t, self.hparams["b_size"], shuffle=False)
+        else:
+            test_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=False)
 
         score = np.array([])
         for data in test_loader:
