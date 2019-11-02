@@ -115,12 +115,14 @@ class Model:
 
         raise NotImplementedError
 
-    def cross_validation(self, X_train, t_train, nb_of_cross_validation=3):
+    def cross_validation(self, X_train=None, t_train=None, dtset=None, valid_size=0.2, nb_of_cross_validation=3):
 
         """
 
         :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t_train: Nx1 numpy array of classes associated with each observation
+        :param dtset: A torch dataset which contain our train data points and labels
+        :param valid_size: Proportion of the dataset that will be use as validation data
         :param nb_of_cross_validation:  Number of data splits and validation to execute
         :return: Mean of score (accuracy)
         """
@@ -129,9 +131,19 @@ class Model:
 
         for i in range(nb_of_cross_validation):
 
-            x_train, x_test, y_train, y_test = train_test_split(X_train, t_train, test_size=0.2)
-            self.fit(x_train, y_train)
-            res = np.append(res, self.score(x_test, y_test))
+            if not(X_train is None or t_train is None):
+                x_train, x_valid, y_train, y_valid = train_test_split(X_train, t_train, test_size=valid_size)
+                self.fit(X_train=x_train, t_train=y_train)
+                res = np.append(res, self.score(X=x_valid, t=y_valid))
+
+            elif not(dtset is None):
+                d_train, d_valid = Dm.validation_split(dtset=dtset, valid_size=valid_size)
+                self.fit(dtset=d_train)
+                res = np.append(res, self.score(dtset=d_valid))
+
+            else:
+                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                    X_train is None, t_train is None, dtset is None))
 
         return np.mean(res)
 
@@ -157,7 +169,7 @@ class Model:
 
             plt.contourf(iX, iY, contour_out)
             plt.scatter(data[:, 0], data[:, 1], s=105, c=classes, edgecolors='b')
-            plt.title('Accuracy on test : {} %'.format(self.score(data, classes)*100))
+            plt.title('Accuracy on test : {} %'.format(self.score(X=data, t=classes)*100))
             plt.show()
 
 
