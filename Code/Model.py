@@ -430,7 +430,11 @@ class CnnVanilla(Model, torch.nn.Module):
         :param num_epoch: Number of epoch to do during the training (default: 10)
         """
 
-        Model.__init__(self, {"lr": [lr], "alpha": [alpha], "eps": [eps], "dropout": [drop_rate], "b_size": [b_size]})
+        Model.__init__(self, {"lr": Hyperparameter("lr", HPtype.real, [lr]),
+                              "alpha": Hyperparameter("alpha", HPtype.real, [alpha]),
+                              "eps": Hyperparameter("eps", HPtype.real, [eps]),
+                              "dropout": Hyperparameter("dropout", HPtype.real, [drop_rate]),
+                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size])})
 
         torch.nn.Module.__init__(self)
 
