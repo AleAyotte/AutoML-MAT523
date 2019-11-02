@@ -25,8 +25,8 @@ class HPtype(Enum):
 
     """
     Class containing possible types of hyper-parameters
-
     """
+
     real = 1
     integer = 2
     categorical = 3
@@ -35,15 +35,15 @@ class HPtype(Enum):
 class Hyperparameter:
 
     def __init__(self, name, type, value=None):
-        """
 
+        """
         Class that defines an hyper-parameter
 
         :param name: Name of the hyper-parameter
         :param type: One type out of HPtype (real,.integer, categorical)
         :param value: List with the value of the hyper-parameter
-
         """
+
         self.name = name
         self.type = type
         self.value = value
@@ -653,7 +653,7 @@ class CnnVanilla(Model, torch.nn.Module):
                 raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
                     X_train is None, t_train is None, dtset is None))
             else:
-                train_loader = Dm.create_dataloader(X, t, self.hparams["b_size"], shuffle=True)
+                train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"], shuffle=True)
         else:
             train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
 
