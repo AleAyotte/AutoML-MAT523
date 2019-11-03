@@ -2,16 +2,20 @@
     @file:              DataGen.py
     @Author:            Alexandre Ayotte
     @Creation Date:     29/09/2019
-    @Last modification: 29/09/2019
+    @Last modification: 02/11/2019
     @Description:       This program generates randoms data for toy problems that we want to solve with autoML methods
 """
 
 from sklearn.datasets import make_moons
 from sklearn.datasets import make_circles
+from sklearn.model_selection import train_test_split
 import numpy as np
 import math
 import copy
 import matplotlib.pyplot as plt
+import torchvision
+import torchvision.transforms as transforms
+import torch.utils.data as utils
 
 
 class DataGenerator:
@@ -96,6 +100,96 @@ class DataGenerator:
             raise Exception("Model: {} does not exist in this program".format(self.model))
 
         return x_train, t_train, x_test, t_test
+
+
+def create_dataloader(features, labels, b_size, shuffle=False):
+    """
+    Transform a n dimensional numpy array of features and a numpy array of labels into ONE data loader
+
+    :param features: A n dimensional numpy array that contain features of each data points
+    :param labels: A numpy array that represent the correspondent labels of each data points
+    :param b_size: Batch size as integer
+    :param shuffle: Do we want to shuffle the data at each epoch
+    :return: A dataloader that contain given features and labels.
+    """
+    tensor_x = torch.tensor(features, dtype=torch.float)
+    tensor_y = torch.tensor(labels, dtype=torch.long)
+    dt = utils.TensorDataset(tensor_x, tensor_y)
+    dt_load = utils.DataLoader(dt, batch_size=b_size, shuffle=shuffle, drop_last=True)
+
+    return dt_load
+
+
+def dataset_to_loader(dataset, b_size=12, shuffle=False):
+    """
+    Transform a torch dataset into a torch dataloader who provide an iterable over the dataset
+
+    :param dataset: A torch dataset
+    :param b_size: The batch size
+    :param shuffle: If the dataset is shuffle at each epoch
+    :return: A torch data_loader that contain the features and the labels.
+    """
+    data_loader = utils.DataLoader(dataset, batch_size=b_size, shuffle=shuffle, drop_last=True)
+
+    return data_loader
+
+
+def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
+    """
+    Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
+    arrays respectively.
+
+    :param features: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
+    :param labels: Nx1 numpy array of classes associated with each observation
+    :param dtset: A torch dataset which contain our train data points and labels
+    :param valid_size: Proportion of the dataset that will be use as validation data
+    :return: train and valid features as numpy arrays and train and valid labels as numpy arrays if features and labels
+             numpy arrays are given but no torch dataset. Train and valid torch datasets if a torch dataset is given.
+    """
+
+    if dtset is None:
+        if features is None or labels is None:
+            raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
+                features is None, labels is None, dtset is None))
+        else:
+            # x_train, x_valid, t_train, t_valid
+            return train_test_split(features, labels, test_size=valid_size)
+    else:
+        num_data = len(dtset)
+        num_valid = math.floor(num_data * valid_size)
+        num_train = num_data - num_valid
+
+        # d_train, d_valid
+        return utils.dataset.random_split(dtset, [num_train, num_valid])
+
+
+def load_cifar10():
+    """
+    Load the CIFAR10 dataset using pytorch
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    """
+
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+
+    return trainset, testset
+
+
+def load_mnist():
+    """
+    Load the MNIST dataset using pytorch and normalize it using is
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    """
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.1307], [0.3081])])
+    trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    testset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+
+    return trainset, testset
 
 
 def plot_data(data, target):
