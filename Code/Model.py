@@ -629,10 +629,10 @@ class CnnVanilla(Model, torch.nn.Module):
         """
 
         if type(m) == torch.nn.Linear:
-            torch.nn.init.xavier_normal(m.weight)
+            torch.nn.init.xavier_normal_(m.weight)
             m.bias.data.fill_(0.01)
         elif type(m) == torch.nn.Conv2d:
-            torch.nn.init.kaiming_normal(m.weight)
+            torch.nn.init.kaiming_normal_(m.weight)
 
     def switch_device(self, _device):
 
@@ -649,7 +649,7 @@ class CnnVanilla(Model, torch.nn.Module):
 
         self.to(self.device_)
 
-    def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=False):
+    def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=True):
 
         """
         Train our model
@@ -669,6 +669,11 @@ class CnnVanilla(Model, torch.nn.Module):
                 train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"], shuffle=True)
         else:
             train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
+
+        # Go in training to activate dropout
+        self.train()
+
+        self.apply(self.init_weights)
 
         if gpu:
             self.switch_device("gpu")
@@ -734,6 +739,8 @@ class CnnVanilla(Model, torch.nn.Module):
                 test_loader = Dm.create_dataloader(X, t, self.hparams["b_size"], shuffle=False)
         else:
             test_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=False)
+
+        self.eval()
 
         score = np.array([])
         for data in test_loader:

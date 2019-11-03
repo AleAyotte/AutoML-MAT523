@@ -2,7 +2,7 @@
     @file:              DataGen.py
     @Author:            Alexandre Ayotte
     @Creation Date:     29/09/2019
-    @Last modification: 29/09/2019
+    @Last modification: 02/11/2019
     @Description:       This program generates randoms data for toy problems that we want to solve with autoML methods
 """
 
