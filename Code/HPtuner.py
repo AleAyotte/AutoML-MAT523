@@ -138,13 +138,14 @@ class HPtuner:
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
 
-    def tune(self, X, t, n_evals=10, nb_cross_validation=1):
+    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
 
         """
         Optimize model's hyperparameters with the method specified at the ignition of our tuner
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
+        :param dtset: A torch dataset which contain our train data points and labels
         :param n_evals: Number of evaluations to do. Only considered if method is 'random_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
@@ -153,7 +154,7 @@ class HPtuner:
         self.search_space.reformat_for_tuning()
 
         # We build loss function
-        loss = self.build_loss_funct(X, t, nb_cross_validation)
+        loss = self.build_loss_funct(X=X, t=t, dtset=dtset, nb_of_cross_validation=nb_cross_validation)
 
         # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
@@ -189,7 +190,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def build_loss_funct(self, X, t, nb_of_cross_validation):
+    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1):
 
         """
         Build a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
@@ -197,6 +198,7 @@ class HPtuner:
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t: Nx1 numpy array of classes associated with each observation
         :param nb_of_cross_validation: Number of data splits and validation to execute
+        :param dtset: A torch dataset which contain our train data points and labels
         :return: A specific loss function for our tuner
         """
 
@@ -204,7 +206,7 @@ class HPtuner:
 
             def loss(hyperparams):
                 self.model.set_hyperparameters(hyperparams)
-                return -1*(self.model.cross_validation(X_train=X, t_train=t,
+                return -1*(self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                        nb_of_cross_validation=nb_of_cross_validation))
             return loss
 

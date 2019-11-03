@@ -406,6 +406,7 @@ class MLP(Model):
         return ((diff == 0).sum()) / len(diff)  # (Nb of good predictions / nb of predictions)
 
     def set_hyperparameters(self, hyperparams):
+
         """
         Change hyper-parameters of our model
 
