@@ -787,7 +787,8 @@ class FastCnnVanilla(Cnn):
                  alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
 
         """
-        Class that generate a convolutional neural network using the Pytorch library
+        Class that generate a convolutional neural network using the sequential module of the Pytorch library. Should be
+        faster than CnnVanilla sub class. (~15-20% faster)
 
         :param num_classes: Number of class
         :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
