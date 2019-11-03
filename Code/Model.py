@@ -3,9 +3,8 @@
     @Author:            Nicolas Raymond
                         Alexandre Ayotte
     @Creation Date:     30/09/2019
-    @Last modification: 22/10/2019
+    @Last modification: 02/11/2019
     @Description:       This program generates models of different types to use for our classification problems.
-
 """
 
 import DataManager as Dm
@@ -118,6 +117,7 @@ class Model:
     def cross_validation(self, X_train=None, t_train=None, dtset=None, valid_size=0.2, nb_of_cross_validation=3):
 
         """
+        Compute a cross validation over a given dataset and calculate the average accuracy
 
         :param X_train: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t_train: Nx1 numpy array of classes associated with each observation

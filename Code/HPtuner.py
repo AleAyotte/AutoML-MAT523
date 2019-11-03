@@ -1,14 +1,15 @@
 """
     @file:              HPtuner.py
     @Author:            Nicolas Raymond
+                        Alexandre Ayotte
     @Creation Date:     01/10/2019
-    @Last modification: 29/10/2019
+    @Last modification: 02/11/2019
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe, space_eval
-from Code.Model import HPtype
+from Model import HPtype
 from enum import Enum, unique
 from copy import deepcopy
 from tqdm import tqdm
@@ -28,6 +29,7 @@ class HPtuner:
         :param model: Model on which we want to optimize hyper-parameters {SVM, MLP} # Work in progress
         :param method: Name of the method of optimization to use {'grid_search', 'random_search'} # Work in progress
         """
+
         if method not in method_list:
             raise Exception('No such method "{}" implemented for HPtuner'.format(method))
 
@@ -48,7 +50,6 @@ class HPtuner:
                                      ('ContinuousDomain', 'DiscreteDomain')
 
         :return: Change hyper-parameter domain in our model attribute
-
         """
 
         # We reset search space to default if it has been modified (the state at the ignition)
@@ -68,7 +69,6 @@ class HPtuner:
         :param domain: One domain among ('ContinuousDomain', 'DiscreteDomain')
 
         :return: Change value associated with the hyper-parameter in our model attribute HP_space dictionary
-
         """
 
         # We look if the domain has a compatible format
@@ -172,7 +172,6 @@ class HPtuner:
         Define a correct search space format according to optimization method.
 
         :return: Search space frame for our tuner
-
         """
 
         if method == 'grid_search':
@@ -200,12 +199,13 @@ class HPtuner:
         :param nb_of_cross_validation: Number of data splits and validation to execute
         :return: A specific loss function for our tuner
         """
+
         if self.method in ['grid_search', 'random_search', 'tpe']:
 
             def loss(hyperparams):
                 self.model.set_hyperparameters(hyperparams)
-                return -1*(self.model.cross_validation(X, t, nb_of_cross_validation))
-
+                return -1*(self.model.cross_validation(X_train=X, t_train=t,
+                                                       nb_of_cross_validation=nb_of_cross_validation))
             return loss
 
         else:
@@ -239,6 +239,7 @@ class SearchSpace:
         :param hyperparam: Name of the hyperparameter
         :param new_type: Type from HPtype
         """
+
         pass
 
     def reformat_for_tuning(self):
@@ -246,6 +247,7 @@ class SearchSpace:
         """
         Reformat search space so it is now compatible with hyper-parameter optimization method
         """
+
         pass
 
     def __getitem__(self, key):
@@ -261,8 +263,8 @@ class HyperoptSearchSpace(SearchSpace):
 
         """
         Class that defines a compatible search space with Hyperopt package hyper-parameter optimization algorithm
-        :param model: Available model from Model.py
 
+        :param model: Available model from Model.py
         """
 
         space = {}
@@ -277,7 +279,6 @@ class HyperoptSearchSpace(SearchSpace):
         """
         Insert the whole built space in a hp.choice object that can now be pass as a space parameter
         in Hyperopt hyper-parameter optimization algorithm
-
         """
 
         self.space = hp.choice('space', [self.space])
@@ -289,8 +290,8 @@ class SklearnSearchSpace(SearchSpace):
 
         """
         Class that defines a compatible search space with Sklearn package hyper-parameter optimization algorithm
-        :param model: Available model from Model.py
 
+        :param model: Available model from Model.py
         """
 
         space = {}
@@ -307,8 +308,8 @@ class GPyOptSearchSpace(SearchSpace):
 
         """
         Class that defines a compatible search space with GPyOpt package hyper-parameter optimization algorithm
-        :param model: Available model from Model.py
 
+        :param model: Available model from Model.py
         """
 
         space = {}
@@ -351,8 +352,8 @@ class DomainType(Enum):
 
     """
     Class containing possible types of hyper-parameters
-
     """
+
     continuous = 1
     discrete = 3
 
@@ -366,6 +367,7 @@ class Domain:
 
         :param type: One type of domain among DomainType
         """
+
         self.type = type
 
 
@@ -378,7 +380,6 @@ class ContinuousDomain(Domain):
 
         :param lower_bound: Lowest possible value (included)
         :param upper_bound: Highest possible value (included)
-
         """
 
         if lower_bound > upper_bound:
@@ -414,7 +415,6 @@ class DiscreteDomain(Domain):
         Class that generates a domain with possible discrete values of an hyper-parameter
 
         :param possible_values: list of values
-
         """
 
         self.values = possible_values
@@ -430,6 +430,7 @@ class DiscreteDomain(Domain):
         :param label: String defining the name of the hyper-parameter
         :return: Set of values compatible with method used by HPtuner
         """
+
         if tuner_method == 'grid_search':
             return self.values
 
