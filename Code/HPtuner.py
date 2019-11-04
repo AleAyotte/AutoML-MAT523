@@ -14,7 +14,6 @@ from enum import Enum, unique
 from copy import deepcopy
 from tqdm import tqdm
 
-
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 
@@ -125,7 +124,7 @@ class HPtuner:
     def random_search(self, loss, n_evals):
 
         """
-        Tune our model by evaluate random points in our search "n_evals" times
+        Tune our model's hyper-parameters by evaluate random points in our search "n_evals" times
 
         :param loss: loss function to minimize
         :param n_evals: Number of evaluations to do
@@ -133,6 +132,21 @@ class HPtuner:
 
         # We find the selection of best hyperparameters according to random_search
         best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=n_evals)
+        best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
+
+        # We apply changes to original model
+        self.model.set_hyperparameters(best_hyperparams)
+
+    def tpe(self, loss, n_evals):
+
+        """
+        Tune our model's hyper-parameter with Tree of Parzen estimators method (tpe)
+
+        :param loss: loss function to minimize
+        :param n_evals: maximal number of evaluations to do
+        """
+        # We find the selection of best hyperparameters according to tpe
+        best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=n_evals)
         best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
 
         # We apply changes to original model
@@ -146,7 +160,7 @@ class HPtuner:
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
         :param dtset: A torch dataset which contain our train data points and labels
-        :param n_evals: Number of evaluations to do. Only considered if method is 'random_search'
+        :param n_evals: Number of evaluations to do. Only considered if method is 'random_search' or 'tpe'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
 
@@ -162,6 +176,9 @@ class HPtuner:
 
         elif self.method == 'random_search':
             self.random_search(loss, n_evals)
+
+        elif self.method == 'tpe':
+            self.tpe(loss, n_evals)
 
         else:
             raise NotImplementedError
