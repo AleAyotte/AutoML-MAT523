@@ -106,7 +106,6 @@ def main():
         svm.fit(x_train, t_train)
         svm.plot_data(x_test, t_test)
 
-
     """
     
     GAUSSIAN PROCESS TEST 
