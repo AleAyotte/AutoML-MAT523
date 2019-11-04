@@ -170,12 +170,12 @@ class HPtuner:
     def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
 
         """
-        Optimize model's hyperparameters with the method specified at the ignition of our tuner
+        Optimize model's hyper-parameters with the method specified at the ignition of our tuner
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
         :param dtset: A torch dataset which contain our train data points and labels
-        :param n_evals: Number of evaluations to do. Only considered if method is 'random_search' or 'tpe'
+        :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
 
@@ -252,7 +252,7 @@ class HPtuner:
                                                        nb_of_cross_validation=nb_of_cross_validation))
             return loss
 
-        if self.method in ['gaussian_process', 'random_forest']:
+        if self.method == 'gaussian_process':
 
             def loss(hyperparams):
                 """
@@ -424,6 +424,10 @@ class GPyOptSearchSpace(SearchSpace):
 
         self.hyperparameters_to_tune = list(self.space.keys())
         self.space = list(self.space.values())
+
+        if len(self.hyperparameters_to_tune) == 0:
+            raise Exception('The search space has not been modified yet. Each hyper-parameter has only a discrete'
+                            'domain of length 1 and no tuning can be done yet')
 
     def __setitem__(self, key, value):
         self.space[key]['domain'] = value
