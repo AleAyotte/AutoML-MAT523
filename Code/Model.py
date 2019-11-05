@@ -1028,7 +1028,7 @@ class ResNet(Cnn):
         if input_dim is None:
             input_dim = np.array([32, 32, 3])
 
-        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, input_dim)
+        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, activation, input_dim)
 
     def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, activation, input_dim):
 
@@ -1109,6 +1109,26 @@ class ResNet(Cnn):
         for it in range(1, len(fc_nodes)):
             self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
             self.fc_layer.append(self.activation)
-            
+
         # Output layer
         self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
+
+    def forward(self, x):
+
+        """
+        Define the forward pass of the neural network
+
+        :param x: Input tensor of size BxD where B is the Batch size and D is the features dimension
+        :return: Output tensor of size num_class x 1.
+        """
+
+        for i, l in enumerate(self.cnn_layer):
+            x = self.cnn_layer[i](x) + l(x)
+
+        x = x.view(-1, self.num_flat_features)
+
+        for i, l in enumerate(self.fc_layer):
+            x = self.drop(self.fc_layer[i](x) + l(x))
+
+        x = self.out_layer(x)
+        return x
