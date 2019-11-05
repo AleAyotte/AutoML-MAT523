@@ -538,9 +538,13 @@ class Cnn(Model, torch.nn.Module):
 
         if type(m) == torch.nn.Linear:
             torch.nn.init.xavier_normal_(m.weight)
-            m.bias.data.fill_(0.01)
+            torch.nn.init.zeros_(m.weight)
         elif type(m) == torch.nn.Conv2d:
             torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
+            torch.nn.init.zeros_(m.bias)
+        elif type(m) == torch.nn.BatchNorm2d:
+            torch.nn.init.ones_(m.weight)
+            torch.nn.init.zeros_(m.bias)
 
     def switch_device(self, _device):
 
