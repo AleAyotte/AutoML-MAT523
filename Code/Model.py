@@ -4,6 +4,9 @@
                         Alexandre Ayotte
     @Creation Date:     30/09/2019
     @Last modification: 02/11/2019
+
+    @Reference: 1)  K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In CVPR, 2016.
+
     @Description:       This program generates models of different types to use for our classification problems.
 """
 
@@ -524,7 +527,6 @@ class Cnn(Model, torch.nn.Module):
             else:
                 raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
 
-    # @staticmethod
     def init_weights(self, m):
 
         """
@@ -584,6 +586,7 @@ class Cnn(Model, torch.nn.Module):
         self.train()
 
         self.apply(self.init_weights)
+
         if gpu:
             self.switch_device("gpu")
 
@@ -803,7 +806,7 @@ class FastCnnVanilla(Cnn):
                           [i, 2]: Pooling kernel width
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
-        :param activation: Activation function (default: ReLU)
+        :param activation: Activation function (default: relu)
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
@@ -909,3 +912,68 @@ class FastCnnVanilla(Cnn):
         conv_out = self.conv(x)
         output = self.fc(conv_out.view(-1, self.num_flat_features))
         return output
+
+
+class ResModule(torch.nn.Module):
+    def __init__(self, fmap_in, kernel, activation, bias=True, twice=False, subsample=False):
+
+        """
+        Create a residual block from the paper "Deep Residual Learning for Image Recogniton" (Ref 1)
+        @Inspired by: https://github.com/a-martyn/resnet/blob/master/resnet.py
+
+        :param fmap_in: Number of feature maps
+        :param kernel: Kernel size as integer (Exemple: 3.  For a 3x3 kernel)
+        :param activation: Activation function (default: relu)
+        :param bias: If we want bias at convolutional layer
+        :param twice: If we want twice more features at the output
+        :param subsample: If we want to subsample the image.
+        """
+
+        torch.nn.Module.__init__(self)
+
+        if activation == "relu":
+            self.activation = torch.nn.ReLU()
+        elif activation == "preLu":
+            self.activation = torch.nn.PReLU()
+        elif activation == "elu":
+            self.activation = torch.nn.ELU()
+        elif activation == "sigmoide":
+            self.activation = torch.nn.Sigmoid()
+
+        # Build layer
+        fmap_out = 2*fmap_in if twice else fmap_in
+
+        self.conv1 = torch.nn.Conv2d(fmap_in, fmap_out, kernel_size=kernel, stride=(2 if subsample else 1),
+                                     padding=Cnn.pad_size(kernel, 1), bias=bias)
+        self.bn1 = torch.nn.BatchNorm2d(fmap_out)
+
+        self.conv2 = torch.nn.Conv2d(fmap_out, fmap_out, kernel_size=kernel, stride=1, padding=Cnn.pad_size(kernel, 1),
+                                     bias=bias)
+        self.bn2 = torch.nn.BatchNorm2d(fmap_out)
+
+        # If subsample is True
+        self.subsample = subsample
+        self.avg_pool = torch.nn.AvgPool2d(kernel_size=1, stride=2)
+
+    def forward(self, x):
+
+        """
+        Define the forward pass of the Residual layer
+
+        :param x: Input tensor of the convolutional layer
+        :return: Output tensor of the residual block
+        """
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.activation(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.subsample:
+            avg_x = self.avg_pool(x)
+            x = torch.cat((avg_x, torch.zeros_like(avg_x)), dim=1)
+
+        out = self.activation(out + x)
+
+        return out
