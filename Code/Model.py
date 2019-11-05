@@ -918,14 +918,14 @@ class FastCnnVanilla(Cnn):
 
 
 class ResModule(torch.nn.Module):
-    def __init__(self, fmap_in, kernel, activation, bias=True, twice=False, subsample=False):
+    def __init__(self, fmap_in, kernel, activation, bias=False, twice=False, subsample=False):
 
         """
         Create a residual block from the paper "Deep Residual Learning for Image Recogniton" (Ref 1)
         @Inspired by: https://github.com/a-martyn/resnet/blob/master/resnet.py
 
         :param fmap_in: Number of feature maps
-        :param kernel: Kernel size as integer (Exemple: 3.  For a 3x3 kernel)
+        :param kernel: Kernel size as integer (Example: 3.  For a 3x3 kernel)
         :param activation: Activation function (default: relu)
         :param bias: If we want bias at convolutional layer
         :param twice: If we want twice more features at the output
@@ -935,13 +935,15 @@ class ResModule(torch.nn.Module):
         torch.nn.Module.__init__(self)
 
         if activation == "relu":
-            self.activation = torch.nn.ReLU()
+            self.activation1 = torch.nn.ReLU()
         elif activation == "preLu":
-            self.activation = torch.nn.PReLU()
+            self.activation1 = torch.nn.PReLU()
         elif activation == "elu":
-            self.activation = torch.nn.ELU()
+            self.activation1 = torch.nn.ELU()
         elif activation == "sigmoide":
-            self.activation = torch.nn.Sigmoid()
+            self.activation1 = torch.nn.Sigmoid()
+
+        self.activation2 = self.activation1  # Do we need a deep copy?
 
         # Build layer
         fmap_out = 2*fmap_in if twice else fmap_in
@@ -969,7 +971,7 @@ class ResModule(torch.nn.Module):
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.activation(out)
+        out = self.activation1(out)
         out = self.conv2(out)
         out = self.bn2(out)
 
@@ -977,23 +979,31 @@ class ResModule(torch.nn.Module):
             avg_x = self.avg_pool(x)
             x = torch.cat((avg_x, torch.zeros_like(avg_x)), dim=1)
 
-        out = self.activation(out + x)
+        out = self.activation2(out + x)
 
         return out
 
 
 class ResNet(Cnn):
-    def __init__(self, num_classes, res_config, fc_nodes, activation='relu', input_dim=None, lr=0.001, alpha=0.0,
-                 eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+    def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
+                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
         Image Recogniton" (Ref 1).
 
         :param num_classes: Number of classes
+        :param conv: A tuple that represent the parameters of the first convolutional layer.
+                     [0]: Number of output channels (features maps)
+                     [1]: Kernel size: (Example: 3.  For a 3x3 kernel)
+                     [2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
         :param res_config: A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
                            [i, 0]: Number of residual modules
-                           [i, 1]: Kernel size of the convolutional layers
+                           [i, 2]: Kernel size of the convolutional layers
+        :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
+        :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
+                      [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
+                      [1]: Kernel size: (Example: 2.  For a 2x2 kernel)
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: relu)
@@ -1018,18 +1028,87 @@ class ResNet(Cnn):
         if input_dim is None:
             input_dim = np.array([32, 32, 3])
 
-        self.build_layer(res_config, fc_nodes, input_dim)
+        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, input_dim)
 
-    def build_layer(self, res_config, fc_nodes, input_dim):
+    def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, activation, input_dim):
 
         """
         Create the model architecture
 
+        :param conv: A tuple that represent the parameters of the first convolutional layer.
+                     [0]: Number of output channels (features maps)
+                     [1]: Kernel size: (Example: 3.  For a 3x3 kernel)
+                     [2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
         :param res_config:A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
-                           [i, 0]: Number of residual modules
-                           [i, 1]: Kernel size of the convolutional layers
+                          [i, 0]: Number of residual modules
+                          [i, 1]: Kernel size of the convolutional layers
+        :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
+        :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
+                      [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
+                      [1]: Kernel size: (Example: 2.  For a 2x2 kernel)
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param activation: Activation function (default: relu)
         :param input_dim: Image input dimensions [height, width, deep]
         """
 
-        raise NotImplementedError
+        # ------------------------------------------------------------------------------------------
+        #                                   CONVOLUTIONAL PART
+        # ------------------------------------------------------------------------------------------
+        # First convolutional layer
+        self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2])))
+        self.cnn_layer.append(torch.nn.BatchNorm2d(conv[0]))
+        self.cnn_layer.append(self.activation)
+
+        # Pooling
+        if pool1[0] == 1:
+            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=pool1[1]))
+
+        elif pool1[0] == 2:
+            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=pool1[1]))
+
+        # We need to compute the input size of the fully connected layer
+        size = self.conv_out_size(input_dim[0:2], conv[1], conv[2], pool1[0])
+
+        # ------------------------------------------------------------------------------------------
+        #                                      RESIDUAL PART
+        # ------------------------------------------------------------------------------------------
+
+        f_in = conv[0]
+
+        for it in range(len(res_config)):
+            self.cnn_layer.append(ResModule(f_in, res_config[it, 1], activation, twice=True, subsample=True))
+
+            # Update
+            f_in *= 2
+            size /= 2
+
+            for _ in range(res_config[it, 0] - 1):
+                self.cnn_layer.append(ResModule(f_in, res_config[it, 1], activation, twice=False, subsample=False))
+
+        # Pooling
+        if pool2[0] == 1:
+            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=pool2[1]))
+
+        elif pool2[0] == 2:
+            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=pool2[1]))
+
+        # We need to compute the input size of the fully connected layer
+        size = self.conv_out_size(size, res_config[-1, 1], 2, pool2[0])
+
+        # ------------------------------------------------------------------------------------------
+        #                                   FULLY CONNECTED PART
+        # ------------------------------------------------------------------------------------------
+        # Compute the fully connected input layer size
+        self.num_flat_features = size[0] * size[1] * f_in
+
+        # First fully connected layer
+        self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
+        self.fc_layer.append(self.activation)
+
+        # All others hidden layers
+        for it in range(1, len(fc_nodes)):
+            self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
+            self.fc_layer.append(self.activation)
+            
+        # Output layer
+        self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
