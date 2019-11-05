@@ -417,18 +417,18 @@ class MLP(Model):
 
 
 class Cnn(Model, torch.nn.Module):
-    def __init__(self, num_classes, activation='ReLU', lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15,
+    def __init__(self, num_classes, activation='relu', lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15,
                  num_epoch=10):
 
         """
         Mother class for all cnn pytorch model. Only build layer and foward are not implemented in this model.
 
         :param num_classes: Number of class
-        :param activation: Activation function (default: ReLU)
+        :param activation: Activation function (default: relu)
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
-        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         """
@@ -437,7 +437,8 @@ class Cnn(Model, torch.nn.Module):
                               "alpha": Hyperparameter("alpha", HPtype.real, [alpha]),
                               "eps": Hyperparameter("eps", HPtype.real, [eps]),
                               "dropout": Hyperparameter("dropout", HPtype.real, [drop_rate]),
-                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size])})
+                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size]),
+                              "activation": Hyperparameter("activation", HPtype.categorical, [activation])})
 
         torch.nn.Module.__init__(self)
 
@@ -447,11 +448,12 @@ class Cnn(Model, torch.nn.Module):
         self.device_ = torch.device("cpu")
 
         # Hyperparameters dictionary
-        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size}
+        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size,
+                        "activation": activation}
 
-        if activation == "ReLU":
+        if activation == "relu":
             self.activation = torch.nn.ReLU()
-        elif activation == "PReLu":
+        elif activation == "preLu":
             self.activation = torch.nn.PReLU()
         elif activation == "elu":
             self.activation = torch.nn.ELU()
@@ -522,8 +524,8 @@ class Cnn(Model, torch.nn.Module):
             else:
                 raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
 
-    @staticmethod
-    def init_weights(m):
+    # @staticmethod
+    def init_weights(self, m):
 
         """
         Initialize the weights of the fully connected layer and convolutional layer with Xavier normal initialization
@@ -536,7 +538,7 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.xavier_normal_(m.weight)
             m.bias.data.fill_(0.01)
         elif type(m) == torch.nn.Conv2d:
-            torch.nn.init.kaiming_normal_(m.weight)
+            torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
 
     def switch_device(self, _device):
 
@@ -660,7 +662,7 @@ class Cnn(Model, torch.nn.Module):
 
 
 class CnnVanilla(Cnn):
-    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='ReLU', input_dim=None, lr=0.001,
+    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
                  alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
 
         """
@@ -677,7 +679,7 @@ class CnnVanilla(Cnn):
                           [i, 2]: Pooling kernel width
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
-        :param activation: Activation function (default: ReLU)
+        :param activation: Activation function (default: relu)
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
@@ -783,7 +785,7 @@ class CnnVanilla(Cnn):
 
 
 class FastCnnVanilla(Cnn):
-    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='ReLU', input_dim=None, lr=0.001,
+    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
                  alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
 
         """
