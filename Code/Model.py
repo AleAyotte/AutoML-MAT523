@@ -712,7 +712,7 @@ class CnnVanilla(Cnn):
         # We build the model
         self.build_layer(conv_layer, pool_list, fc_nodes, input_dim)
 
-    def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim=None):
+    def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim):
 
         """
         Create the model architecture
@@ -834,7 +834,7 @@ class FastCnnVanilla(Cnn):
         # We build the model
         self.build_layer(conv_layer, pool_list, fc_nodes, input_dim)
 
-    def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim=None):
+    def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim):
 
         """
         Create the model architecture
@@ -849,7 +849,6 @@ class FastCnnVanilla(Cnn):
                           [i, 2]: Pooling kernel width
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
-        :return:
         """
 
         # ------------------------------------------------------------------------------------------
@@ -981,3 +980,56 @@ class ResModule(torch.nn.Module):
         out = self.activation(out + x)
 
         return out
+
+
+class ResNet(Cnn):
+    def __init__(self, num_classes, res_config, fc_nodes, activation='relu', input_dim=None, lr=0.001, alpha=0.0,
+                 eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+
+        """
+        Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
+        Image Recogniton" (Ref 1).
+
+        :param num_classes: Number of classes
+        :param res_config: A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
+                           [i, 0]: Number of residual modules
+                           [i, 1]: Kernel size of the convolutional layers
+        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param input_dim: Image input dimensions [height, width, deep]
+        :param activation: Activation function (default: relu)
+        :param lr: The initial learning rate used with the Adam Optimizer
+        :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
+        :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
+        :param b_size: Batch size as integer (default: 15)
+        :param num_epoch: Number of epoch to do during the training (default: 10)
+        """
+
+        Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
+                     b_size=b_size, num_epoch=num_epoch)
+
+        # We need a special type of list to ensure that torch detect every layer and node of the neural net
+        self.cnn_layer = torch.nn.ModuleList()
+        self.fc_layer = torch.nn.ModuleList()
+        self.num_flat_features = 0
+        self.out_layer = None
+
+        # Default image dimension. Height: 32, width: 32 and deep: 3 (CIFAR10)
+        if input_dim is None:
+            input_dim = np.array([32, 32, 3])
+
+        self.build_layer(res_config, fc_nodes, input_dim)
+
+    def build_layer(self, res_config, fc_nodes, input_dim):
+
+        """
+        Create the model architecture
+
+        :param res_config:A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
+                           [i, 0]: Number of residual modules
+                           [i, 1]: Kernel size of the convolutional layers
+        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param input_dim: Image input dimensions [height, width, deep]
+        """
+
+        raise NotImplementedError
