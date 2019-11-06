@@ -55,9 +55,9 @@ def main():
         # We optimize hyper-parameters with random search
         mlp_tuner = HPtuner(mlp, 'random_search')
         mlp_tuner.set_search_space({'alpha': ContinuousDomain(0, 1),
-                                    'learning_rate_init': ContinuousDomain(0, 1)})
+                                    'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True)})
 
-        mlp_tuner.tune(x_train, t_train, n_evals=400)
+        mlp_tuner.tune(x_train, t_train, n_evals=25, nb_cross_validation=2)
 
         # We look at the new results
         mlp.fit(x_train, t_train)
@@ -80,7 +80,7 @@ def main():
         # We optimize hyper-parameters with random search
         mlp_tuner = HPtuner(mlp, 'tpe')
         mlp_tuner.set_search_space({'alpha': ContinuousDomain(0, 1),
-                                    'learning_rate_init': ContinuousDomain(0.0001, 1)})
+                                    'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True)})
 
         mlp_tuner.tune(x_train, t_train, n_evals=100, nb_cross_validation=4)
 
@@ -115,7 +115,7 @@ def main():
     if test == 'gaussian_process':
 
         # We generate an MLP to classify our data (5 hidden layers of 20 neurons)
-        mlp = mod.MLP((20, 20, 20, 20, 20), max_iter=1000)
+        mlp = mod.MLP((20, 20, 20, 20, 20), max_iter=1000, learning_rate_init=3, alpha=2)
 
         # We train our model without hyper-parameter tuning
         mlp.fit(x_train, t_train)
@@ -124,24 +124,13 @@ def main():
         # We optimize hyper-parameters with random search
         mlp_tuner = HPtuner(mlp, 'gaussian_process')
         mlp_tuner.set_search_space({'alpha': ContinuousDomain(0, 1),
-                                    'learning_rate_init': ContinuousDomain(0.0001, 0.05)})
+                                    'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True)})
 
-        mlp_tuner.tune(x_train, t_train, n_evals=50)
+        mlp_tuner.tune(x_train, t_train, n_evals=25)
 
         # We look at the new results
         mlp.fit(x_train, t_train)
         mlp.plot_data(x_test, t_test)
-
-        # We do the same exercice to test an svm with an rbf kernel
-        svm = mod.SVM()
-        svm.fit(x_train, t_train)
-        svm.plot_data(x_test, t_test)
-        svm_tuner = HPtuner(svm, 'gaussian_process')
-        svm_tuner.set_search_space({'C': ContinuousDomain(0.0001, 1),
-                                    'gamma': ContinuousDomain(0, 1)})
-        svm_tuner.tune(x_train, t_train, n_evals=50)
-        svm.fit(x_train, t_train)
-        svm.plot_data(x_test, t_test)
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@ from enum import Enum, unique
 from copy import deepcopy
 from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
+from numpy import argmin
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -38,6 +39,7 @@ class HPtuner:
         self.method = method
         self.search_space = self.search_space_ignition(method, model)
         self.search_space_modified = False
+        self.log_scaled_hyperparameters = False
 
     def set_search_space(self, hp_search_space_dict):
 
@@ -88,6 +90,9 @@ class HPtuner:
         # the default domain is discrete (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
         if domain.type == DomainType.continuous:
             self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
+            if domain.log_scaled:
+                self.log_scaled_hyperparameters = True
+                self.search_space.save_as_log_scaled(hyperparameter)
 
         # We change hyper-parameter's domain
         self.search_space[hyperparameter] = domain.compatible_format(self.method, hyperparameter)
@@ -137,6 +142,10 @@ class HPtuner:
         best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=n_evals)
         best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
 
+        # We transform hyper-parameters if some of them are log scaled
+        if self.log_scaled_hyperparameters:
+            self.exponential(best_hyperparams, self.search_space.log_scaled_hyperparam)
+
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
 
@@ -152,6 +161,10 @@ class HPtuner:
         best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=n_evals)
         best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
 
+        # We transform hyper-parameters if some of them are log scaled
+        if self.log_scaled_hyperparameters:
+            self.exponential(best_hyperparams, self.search_space.log_scaled_hyperparam)
+
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
 
@@ -163,9 +176,20 @@ class HPtuner:
         :param loss: loss function to minimize
         :param n_evals: maximal number of evaluations to do
         """
+
+        # We execute the hyper-parameter optimization
         optimizer = BayesianOptimization(loss, domain=self.search_space.space)
         optimizer.run_optimization(max_iter=n_evals)
         optimizer.plot_acquisition()
+
+        # We save the best hyper-parameters
+        best_hyperparams = self.search_space.change_to_dict([optimizer.X[argmin(optimizer.Y), :]])
+
+        # We transform hyper-parameters if some of them are log scaled
+        if self.log_scaled_hyperparameters:
+            self.exponential(best_hyperparams, self.search_space.log_scaled_hyperparam)
+
+        self.model.set_hyperparameters(best_hyperparams)
 
     def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
 
@@ -247,6 +271,9 @@ class HPtuner:
                 :param hyperparams: dict of hyper-parameters
                 :return: -1*(mean accuracy on cross validation)
                 """
+                if self.log_scaled_hyperparameters:
+                    self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
+
                 self.model.set_hyperparameters(hyperparams)
                 return -1*(self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                        nb_of_cross_validation=nb_of_cross_validation))
@@ -263,17 +290,12 @@ class HPtuner:
                 :return: -1*(mean accuracy on cross validation)
                 """
                 # We extract the values from the 2d-numpy array
-                hps = hyperparams[0]
+                hyperparams = self.search_space.change_to_dict(hyperparams)
 
-                # We initialize an empty hyper-parameter dict. and an index
-                hp_dict, i = {}, 0
+                if self.log_scaled_hyperparameters:
+                    self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
-                # We build a dictionnary of hyperparamters
-                for hyperparam in self.search_space.hyperparameters_to_tune:
-                    hp_dict[hyperparam] = hps[i]
-                    i += 1
-
-                self.model.set_hyperparameters(hp_dict)
+                self.model.set_hyperparameters(hyperparams)
                 return -1 * (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                          nb_of_cross_validation=nb_of_cross_validation))
 
@@ -281,6 +303,19 @@ class HPtuner:
 
         else:
             raise NotImplementedError
+
+    @staticmethod
+    def exponential(original_hp_dict, list_of_log_scaled_hp):
+
+        """
+        Transform log_scaled hyper-parameter as a power of 10
+
+        :param original_hp_dict: hyper-parameter dictionary
+        :param list_of_log_scaled_hp: list of hyper-parameters's name to transform
+        :return:
+        """
+        for hyperparam in list_of_log_scaled_hp:
+            original_hp_dict[hyperparam] = 10 ** original_hp_dict[hyperparam]
 
 
 class SearchSpace:
@@ -293,6 +328,7 @@ class SearchSpace:
 
         self.default_space = space
         self.space = space
+        self.log_scaled_hyperparam = []
 
     def reset(self):
 
@@ -301,6 +337,7 @@ class SearchSpace:
         """
 
         self.space = deepcopy(self.default_space)
+        self.log_scaled_hyperparam.clear()
 
     def change_hyperparameter_type(self, hyperparam, new_type):
 
@@ -320,6 +357,16 @@ class SearchSpace:
         """
 
         pass
+
+    def save_as_log_scaled(self, hyperparam):
+
+        """
+        Saves hyper-parameter's name that is log scaled
+
+        :param hyperparam: Name of the hyperparameter
+        """
+
+        self.log_scaled_hyperparam.append(hyperparam)
 
     def __getitem__(self, key):
         return self.space[key]
@@ -429,6 +476,26 @@ class GPyOptSearchSpace(SearchSpace):
             raise Exception('The search space has not been modified yet. Each hyper-parameter has only a discrete'
                             'domain of length 1 and no tuning can be done yet')
 
+    def change_to_dict(self, hyper_paramater_values):
+
+        """
+        Build a dictionary of hyper-parameters
+        :param hyper_paramater_values: 2d numpy array of hyper-parameters' values
+        :return: dictionary of hyper-parameters
+        """
+
+        # We initialize a dictionary and an index
+        hp_dict, i = {}, 0
+
+        # We extract hyper-parameters' values
+        hyper_paramater_values = hyper_paramater_values[0]
+
+        for hyperparam in self.hyperparameters_to_tune:
+            hp_dict[hyperparam] = hyper_paramater_values[i]
+            i += 1
+
+        return hp_dict
+
     def __setitem__(self, key, value):
         self.space[key]['domain'] = value
 
@@ -459,13 +526,14 @@ class Domain:
 
 class ContinuousDomain(Domain):
 
-    def __init__(self, lower_bound, upper_bound):
+    def __init__(self, lower_bound, upper_bound, log_scaled=False):
 
         """
         Class that generates a continuous domain
 
         :param lower_bound: Lowest possible value (included)
         :param upper_bound: Highest possible value (included)
+        :param log_scaled: If True, hyper-parameter will now be seen as 10^x where x follows a uniform(lb,ub)
         """
 
         if lower_bound > upper_bound:
@@ -473,6 +541,7 @@ class ContinuousDomain(Domain):
 
         self.lb = lower_bound
         self.ub = upper_bound
+        self.log_scaled = log_scaled
 
         super(ContinuousDomain, self).__init__(DomainType.continuous)
 
@@ -501,8 +570,9 @@ class DiscreteDomain(Domain):
         Class that generates a domain with possible discrete values of an hyper-parameter
 
         :param possible_values: list of values
-        """
 
+
+        """
         self.values = possible_values
 
         super(DiscreteDomain, self).__init__(DomainType.discrete)
