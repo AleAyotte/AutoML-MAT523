@@ -20,6 +20,7 @@ import torch.nn.functional as F
 import time
 from sklearn.model_selection import train_test_split
 from enum import Enum, unique
+from tqdm import tqdm
 
 
 @unique
@@ -541,7 +542,8 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.zeros_(m.weight)
         elif type(m) == torch.nn.Conv2d:
             torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
-            torch.nn.init.zeros_(m.bias)
+            if not(m.bias is None):
+                torch.nn.init.zeros_(m.bias)
         elif type(m) == torch.nn.BatchNorm2d:
             torch.nn.init.ones_(m.weight)
             torch.nn.init.zeros_(m.bias)
@@ -601,7 +603,6 @@ class Cnn(Model, torch.nn.Module):
         for epoch in range(self.num_epoch):
             sum_loss = 0.0
             it = 0
-
             for step, data in enumerate(train_loader, 0):
                 features, labels = data[0].to(self.device_), data[1].to(self.device_)
 
@@ -1003,7 +1004,8 @@ class ResNet(Cnn):
         :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
         :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
-                      [1]: Kernel size: (Example: 2.  For a 2x2 kernel)
+                      [1]: Pooling kernel height
+                      [2]: Pooling kernel width
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: relu)
@@ -1045,7 +1047,8 @@ class ResNet(Cnn):
         :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
         :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
-                      [1]: Kernel size: (Example: 2.  For a 2x2 kernel)
+                      [1]: Pooling kernel height
+                      [2]: Pooling kernel width
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param activation: Activation function (default: relu)
         :param input_dim: Image input dimensions [height, width, deep]
@@ -1067,7 +1070,7 @@ class ResNet(Cnn):
             self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=pool1[1]))
 
         # We need to compute the input size of the fully connected layer
-        size = self.conv_out_size(input_dim[0:2], conv[1], conv[2], pool1[0])
+        size = self.conv_out_size(input_dim[0:2], conv[1], conv[2], pool1)
 
         # ------------------------------------------------------------------------------------------
         #                                      RESIDUAL PART
@@ -1080,20 +1083,21 @@ class ResNet(Cnn):
 
             # Update
             f_in *= 2
-            size /= 2
+            print("size = {}".format(size))
+            size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
                 self.cnn_layer.append(ResModule(f_in, res_config[it, 1], activation, twice=False, subsample=False))
 
         # Pooling
         if pool2[0] == 1:
-            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=pool2[1]))
+            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=(pool2[1], pool2[2])))
 
         elif pool2[0] == 2:
-            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=pool2[1]))
+            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=(pool2[1], pool2[2])))
 
         # We need to compute the input size of the fully connected layer
-        size = self.conv_out_size(size, res_config[-1, 1], 2, pool2[0])
+        size = self.conv_out_size(size, res_config[-1, 1], 2, pool2)
 
         # ------------------------------------------------------------------------------------------
         #                                   FULLY CONNECTED PART
