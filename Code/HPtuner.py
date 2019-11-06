@@ -13,6 +13,8 @@ from Model import HPtype
 from enum import Enum, unique
 from copy import deepcopy
 from tqdm import tqdm
+from GPyOpt.methods import BayesianOptimization
+
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
@@ -82,9 +84,10 @@ class HPtuner:
         if domain.type.value < self.model.HP_space[hyperparameter].type.value:
             raise Exception('You cannot attribute a continuous search space to a non real hyper-parameter')
 
-        # If the new domain is continuous and the current domain is discrete (or the opposite)
-        # domain type will be changed (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
-        self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
+        # If the new domain is continuous and the current domain will be changed cause
+        # the default domain is discrete (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
+        if domain.type == DomainType.continuous:
+            self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
 
         # We change hyper-parameter's domain
         self.search_space[hyperparameter] = domain.compatible_format(self.method, hyperparameter)
@@ -152,15 +155,27 @@ class HPtuner:
         # We apply changes to original model
         self.model.set_hyperparameters(best_hyperparams)
 
+    def gaussian_process(self, loss, n_evals):
+
+        """
+        Tune our model's hyper-parameter using gaussian process (a bayesian optimization method)
+
+        :param loss: loss function to minimize
+        :param n_evals: maximal number of evaluations to do
+        """
+        optimizer = BayesianOptimization(loss, domain=self.search_space.space)
+        optimizer.run_optimization(max_iter=n_evals)
+        optimizer.plot_acquisition()
+
     def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
 
         """
-        Optimize model's hyperparameters with the method specified at the ignition of our tuner
+        Optimize model's hyper-parameters with the method specified at the ignition of our tuner
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
         :param dtset: A torch dataset which contain our train data points and labels
-        :param n_evals: Number of evaluations to do. Only considered if method is 'random_search' or 'tpe'
+        :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
 
@@ -179,6 +194,9 @@ class HPtuner:
 
         elif self.method == 'tpe':
             self.tpe(loss, n_evals)
+
+        elif self.method == 'gaussian_process':
+            self.gaussian_process(loss, n_evals)
 
         else:
             raise NotImplementedError
@@ -222,9 +240,43 @@ class HPtuner:
         if self.method in ['grid_search', 'random_search', 'tpe']:
 
             def loss(hyperparams):
+                """
+                Return the mean negative value of the accuracy on a cross validation
+                (minimize -1*accuracy is equivalent to maximize accuracy)
+
+                :param hyperparams: dict of hyper-parameters
+                :return: -1*(mean accuracy on cross validation)
+                """
                 self.model.set_hyperparameters(hyperparams)
                 return -1*(self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                        nb_of_cross_validation=nb_of_cross_validation))
+            return loss
+
+        if self.method == 'gaussian_process':
+
+            def loss(hyperparams):
+                """
+                Return the mean negative value of the accuracy on a cross validation
+                (minimize -1*accuracy is equivalent to maximize accuracy)
+
+                :param hyperparams: 2d-numpy array containing only values of hyper-parameters
+                :return: -1*(mean accuracy on cross validation)
+                """
+                # We extract the values from the 2d-numpy array
+                hps = hyperparams[0]
+
+                # We initialize an empty hyper-parameter dict. and an index
+                hp_dict, i = {}, 0
+
+                # We build a dictionnary of hyperparamters
+                for hyperparam in self.search_space.hyperparameters_to_tune:
+                    hp_dict[hyperparam] = hps[i]
+                    i += 1
+
+                self.model.set_hyperparameters(hp_dict)
+                return -1 * (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                         nb_of_cross_validation=nb_of_cross_validation))
+
             return loss
 
         else:
@@ -339,12 +391,15 @@ class GPyOptSearchSpace(SearchSpace):
 
             if model.HP_space[hyperparam].type == HPtype.categorical:
 
-                space[hyperparam] = {'name': hyperparam, 'type': 'categorical', 'domain': (hp_initial_value,)}
+                space[hyperparam] = {'name': hyperparam, 'type': 'categorical',
+                                     'domain': (hp_initial_value,), 'dimensionality': 1}
 
             else:
-                space[hyperparam] = {'name': hyperparam, 'type': 'discrete', 'domain': (hp_initial_value,)}
+                space[hyperparam] = {'name': hyperparam, 'type': 'discrete',
+                                     'domain': (hp_initial_value,), 'dimensionality': 1}
 
         super(GPyOptSearchSpace, self).__init__(space)
+        self.hyperparameters_to_tune = None
 
     def change_hyperparameter_type(self, hp_to_fix, new_type):
 
@@ -354,16 +409,28 @@ class GPyOptSearchSpace(SearchSpace):
         :param hp_to_fix: Name of the hyper-parameter which we want to change his type
         :param new_type: The new type (one among DomainType)
         """
-
-        self[hp_to_fix] = new_type
+        self[hp_to_fix]['type'] = new_type.name
 
     def reformat_for_tuning(self):
 
         """
-        Convert the dictionnary to a list containing only internal dictionaries
+        Convert the dictionnary to a list containing only internal dictionaries.
+        Only keep hyper-parameters that has more than a unique discrete value as a domain
         """
 
-        self.space = self.space.values()
+        for hyperparam in list(self.space.keys()):
+            if len(self[hyperparam]['domain']) == 1:
+                self.space.pop(hyperparam)
+
+        self.hyperparameters_to_tune = list(self.space.keys())
+        self.space = list(self.space.values())
+
+        if len(self.hyperparameters_to_tune) == 0:
+            raise Exception('The search space has not been modified yet. Each hyper-parameter has only a discrete'
+                            'domain of length 1 and no tuning can be done yet')
+
+    def __setitem__(self, key, value):
+        self.space[key]['domain'] = value
 
 
 @unique
