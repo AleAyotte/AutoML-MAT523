@@ -14,6 +14,7 @@ from enum import Enum, unique
 from copy import deepcopy
 from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
+from numpy import power
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -88,6 +89,8 @@ class HPtuner:
         # the default domain is discrete (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
         if domain.type == DomainType.continuous:
             self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
+            if domain.log_scaled:
+                self.search_space.save_as_log_scaled(hyperparameter)
 
         # We change hyper-parameter's domain
         self.search_space[hyperparameter] = domain.compatible_format(self.method, hyperparameter)
@@ -236,6 +239,7 @@ class HPtuner:
         :param dtset: A torch dataset which contain our train data points and labels
         :return: A specific loss function for our tuner
         """
+        log_scaled_hyperparameter = (len(self.search_space.log_scaled_hyperparam) != 0)
 
         if self.method in ['grid_search', 'random_search', 'tpe']:
 
@@ -247,6 +251,9 @@ class HPtuner:
                 :param hyperparams: dict of hyper-parameters
                 :return: -1*(mean accuracy on cross validation)
                 """
+                if log_scaled_hyperparameter:
+                    self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
+
                 self.model.set_hyperparameters(hyperparams)
                 return -1*(self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                        nb_of_cross_validation=nb_of_cross_validation))
@@ -273,6 +280,9 @@ class HPtuner:
                     hp_dict[hyperparam] = hps[i]
                     i += 1
 
+                if log_scaled_hyperparameter:
+                    self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
+
                 self.model.set_hyperparameters(hp_dict)
                 return -1 * (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                          nb_of_cross_validation=nb_of_cross_validation))
@@ -281,6 +291,19 @@ class HPtuner:
 
         else:
             raise NotImplementedError
+
+    @staticmethod
+    def exponential(original_hp_dict, list_of_log_scaled_hp):
+
+        """
+        Transform log_scaled hyper-parameter as a power of 10
+
+        :param original_hp_dict: hyper-parameter dictionary
+        :param list_of_log_scaled_hp: list of hyper-parameters's name to transform
+        :return:
+        """
+        for hyperparam in list_of_log_scaled_hp:
+            original_hp_dict[hyperparam] = 10 ** original_hp_dict[hyperparam]
 
 
 class SearchSpace:
@@ -293,6 +316,7 @@ class SearchSpace:
 
         self.default_space = space
         self.space = space
+        self.log_scaled_hyperparam = []
 
     def reset(self):
 
@@ -301,6 +325,7 @@ class SearchSpace:
         """
 
         self.space = deepcopy(self.default_space)
+        self.log_scaled_hyperparam.clear()
 
     def change_hyperparameter_type(self, hyperparam, new_type):
 
@@ -320,6 +345,16 @@ class SearchSpace:
         """
 
         pass
+
+    def save_as_log_scaled(self, hyperparam):
+
+        """
+        Saves hyper-parameter's name that is log scaled
+
+        :param hyperparam: Name of the hyperparameter
+        """
+
+        self.log_scaled_hyperparam.append(hyperparam)
 
     def __getitem__(self, key):
         return self.space[key]
@@ -459,13 +494,14 @@ class Domain:
 
 class ContinuousDomain(Domain):
 
-    def __init__(self, lower_bound, upper_bound):
+    def __init__(self, lower_bound, upper_bound, log_scaled=False):
 
         """
         Class that generates a continuous domain
 
         :param lower_bound: Lowest possible value (included)
         :param upper_bound: Highest possible value (included)
+        :param log_scaled: If True, hyper-parameter will now be seen as 10^x where x follows a uniform(lb,ub)
         """
 
         if lower_bound > upper_bound:
@@ -473,6 +509,7 @@ class ContinuousDomain(Domain):
 
         self.lb = lower_bound
         self.ub = upper_bound
+        self.log_scaled = log_scaled
 
         super(ContinuousDomain, self).__init__(DomainType.continuous)
 
@@ -501,8 +538,9 @@ class DiscreteDomain(Domain):
         Class that generates a domain with possible discrete values of an hyper-parameter
 
         :param possible_values: list of values
-        """
 
+
+        """
         self.values = possible_values
 
         super(DiscreteDomain, self).__init__(DomainType.discrete)
