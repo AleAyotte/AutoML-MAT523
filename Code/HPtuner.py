@@ -275,7 +275,7 @@ class HPtuner:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
                 self.model.set_hyperparameters(hyperparams)
-                return -1*(self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                return -1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                        nb_of_cross_validation=nb_of_cross_validation))
             return loss
 
@@ -296,7 +296,7 @@ class HPtuner:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
                 self.model.set_hyperparameters(hyperparams)
-                return -1 * (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                return -1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                          nb_of_cross_validation=nb_of_cross_validation))
 
             return loss
