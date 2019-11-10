@@ -12,7 +12,7 @@ def main():
     # We generate data for our tests
     dgen = dm.DataGenerator(500, 500, "nSpiral")
     x_train, t_train, x_test, t_test = dgen.generate_data(0.35)
-    dm.plot_data(x_train,t_train)
+    dm.plot_data(x_train, t_train)
 
     """
     
@@ -24,18 +24,15 @@ def main():
         # We generate an MLP to classify our data (5 hidden layers of 20 neurons)
         mlp = mod.MLP((20, 20, 20, 20, 20), max_iter=1000)
 
-        # We train our model without hyper-parameter tuning
-        mlp.fit(x_train, t_train)
-        mlp.plot_data(x_test, t_test)
-
         # We optimize hyper-parameters with grid_search
-        mlp_tuner = HPtuner(mlp, 'grid_search')
+        mlp_tuner = HPtuner(mlp, 'grid_search', test_default_hyperparam=True)
         mlp_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(0, 1, 20))),
                                    'learning_rate_init': DiscreteDomain(list(linspace(0.0001, 1, 20)))})
-        mlp_tuner.tune(x_train, t_train)
+        results = mlp_tuner.tune(x_train, t_train)
 
-        # We look at the new results
-        mlp.fit(x_train, t_train)
+        # We look at the tuning results
+        results.plot_accuracy_history()
+        results.plot_accuracy_history(best_accuracy=True)
         mlp.plot_data(x_test, t_test)
 
     """
@@ -48,19 +45,16 @@ def main():
         # We generate an MLP to classify our data (5 hidden layers of 20 neurons)
         mlp = mod.MLP((20, 20, 20, 20, 20), max_iter=1000)
 
-        # We train our model without hyper-parameter tuning
-        mlp.fit(x_train, t_train)
-        mlp.plot_data(x_test, t_test)
-
         # We optimize hyper-parameters with random search
-        mlp_tuner = HPtuner(mlp, 'random_search')
+        mlp_tuner = HPtuner(mlp, 'random_search', test_default_hyperparam=True)
         mlp_tuner.set_search_space({'alpha': ContinuousDomain(0, 1),
                                     'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True)})
 
-        mlp_tuner.tune(x_train, t_train, n_evals=25, nb_cross_validation=2)
+        results = mlp_tuner.tune(x_train, t_train, n_evals=25, nb_cross_validation=2)
 
         # We look at the new results
-        mlp.fit(x_train, t_train)
+        results.plot_accuracy_history()
+        results.plot_accuracy_history(best_accuracy=True)
         mlp.plot_data(x_test, t_test)
 
     """
@@ -73,19 +67,16 @@ def main():
         # We generate an MLP to classify our data (5 hidden layers of 20 neurons)
         mlp = mod.MLP((20, 20, 20, 20, 20), max_iter=1000)
 
-        # We train our model without hyper-parameter tuning
-        mlp.fit(x_train, t_train)
-        mlp.plot_data(x_test, t_test)
-
         # We optimize hyper-parameters with random search
-        mlp_tuner = HPtuner(mlp, 'tpe')
+        mlp_tuner = HPtuner(mlp, 'tpe', test_default_hyperparam=True)
         mlp_tuner.set_search_space({'alpha': ContinuousDomain(0, 1),
                                     'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True)})
 
-        mlp_tuner.tune(x_train, t_train, n_evals=100, nb_cross_validation=4)
+        results = mlp_tuner.tune(x_train, t_train, n_evals=100, nb_cross_validation=2)
 
         # We look at the new results
-        mlp.fit(x_train, t_train)
+        results.plot_accuracy_history()
+        results.plot_accuracy_history(best_accuracy=True)
         mlp.plot_data(x_test, t_test)
 
         # ---------------------------------------------------------------------------------- #
@@ -97,13 +88,12 @@ def main():
 
         # We do the same exercice for an svm
         svm = mod.SVM(kernel='poly')
-        svm.fit(x_train, t_train)
-        svm.plot_data(x_test, t_test)
-        svm_tuner = HPtuner(svm, 'tpe')
-        svm_tuner.set_search_space({'C': ContinuousDomain(0.0001, 1),
+        svm_tuner = HPtuner(svm, 'tpe', test_default_hyperparam=True)
+        svm_tuner.set_search_space({'C': ContinuousDomain(-6, 0, log_scaled=True),
                                     'degree': DiscreteDomain([1, 2, 3, 4, 5, 6])})
-        svm_tuner.tune(x_train, t_train, n_evals=100, nb_cross_validation=3)
-        svm.fit(x_train, t_train)
+        results = svm_tuner.tune(x_train, t_train, n_evals=100, nb_cross_validation=3)
+        results.plot_accuracy_history()
+        results.plot_accuracy_history(best_accuracy=True)
         svm.plot_data(x_test, t_test)
 
     """
@@ -117,19 +107,16 @@ def main():
         # We generate an MLP to classify our data (5 hidden layers of 20 neurons)
         mlp = mod.MLP((20, 20, 20, 20, 20), max_iter=1000, learning_rate_init=3, alpha=2)
 
-        # We train our model without hyper-parameter tuning
-        mlp.fit(x_train, t_train)
-        mlp.plot_data(x_test, t_test)
-
         # We optimize hyper-parameters with random search
-        mlp_tuner = HPtuner(mlp, 'gaussian_process')
+        mlp_tuner = HPtuner(mlp, 'gaussian_process', test_default_hyperparam=True)
         mlp_tuner.set_search_space({'alpha': ContinuousDomain(0, 1),
                                     'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True)})
 
-        mlp_tuner.tune(x_train, t_train, n_evals=25)
+        results = mlp_tuner.tune(x_train, t_train, n_evals=15)
 
-        # We look at the new results
-        mlp.fit(x_train, t_train)
+        # We look at the tuning results
+        results.plot_accuracy_history()
+        results.plot_accuracy_history(best_accuracy=True)
         mlp.plot_data(x_test, t_test)
 
 
