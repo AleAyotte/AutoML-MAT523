@@ -266,17 +266,17 @@ class HPtuner:
             def loss(hyperparams):
                 """
                 Return the mean negative value of the accuracy on a cross validation
-                (minimize -1*accuracy is equivalent to maximize accuracy)
+                (minimize 1 - *accuracy is equivalent to maximize accuracy)
 
                 :param hyperparams: dict of hyper-parameters
-                :return: -1*(mean accuracy on cross validation)
+                :return: 1 - (mean accuracy on cross validation)
                 """
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
                 self.model.set_hyperparameters(hyperparams)
-                return -1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                       nb_of_cross_validation=nb_of_cross_validation))
+                return 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                        nb_of_cross_validation=nb_of_cross_validation))
             return loss
 
         if self.method == 'gaussian_process':
@@ -284,10 +284,10 @@ class HPtuner:
             def loss(hyperparams):
                 """
                 Return the mean negative value of the accuracy on a cross validation
-                (minimize -1*accuracy is equivalent to maximize accuracy)
+                (minimize 1 - accuracy is equivalent to maximize accuracy)
 
                 :param hyperparams: 2d-numpy array containing only values of hyper-parameters
-                :return: -1*(mean accuracy on cross validation)
+                :return: 1 - (mean accuracy on cross validation)
                 """
                 # We extract the values from the 2d-numpy array
                 hyperparams = self.search_space.change_to_dict(hyperparams)
@@ -296,8 +296,8 @@ class HPtuner:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
                 self.model.set_hyperparameters(hyperparams)
-                return -1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                         nb_of_cross_validation=nb_of_cross_validation))
+                return 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                        nb_of_cross_validation=nb_of_cross_validation))
 
             return loss
 
