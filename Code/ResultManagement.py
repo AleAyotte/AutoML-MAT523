@@ -11,19 +11,21 @@ import matplotlib.pyplot as plt
 
 class ExperimentAnalyst:
 
-    """
-    Class that generates intelligent and useful storage and visualization
-    methods for all hyper-parameter tuning results.
-    """
-
     def __init__(self, tuning_method):
+
+        """
+        Class that generates intelligent and useful storage and visualization
+        methods for all hyper-parameter tuning results.
+
+        :param tuning_method: Name of the method used for hyper-parameter tuning
+        """
 
         self.tuning_method = tuning_method
         self.hyperparameters_history = []
         self.best_hyperparameters = {}
-        self.loss_history = []
-        self.best_loss_history = []
-        self.actual_best_loss = 1  # Worst possible loss
+        self.accuracy_history = []
+        self.best_accuracy_history = []
+        self.actual_best_accuracy = 0  # Worst possible accuracy
 
     def update(self, new_loss, hyperparams):
 
@@ -35,19 +37,20 @@ class ExperimentAnalyst:
         """
 
         # Update history
-        self.loss_history.append(new_loss)
+        accuracy = 1 - new_loss
+        self.accuracy_history.append(accuracy)
         self.hyperparameters_history.append(hyperparams)
 
         # Update best pair of hyper-parameters and loss if the actual one is beaten
-        if new_loss < self.actual_best_loss:
-            self.actual_best_loss = new_loss
-            self.best_loss_history.append(new_loss)
+        if accuracy > self.actual_best_accuracy:
+            self.actual_best_accuracy = accuracy
+            self.best_accuracy_history.append(accuracy)
             self.best_hyperparameters = hyperparams
 
         else:
-            self.best_loss_history.append(self.actual_best_loss)
+            self.best_accuracy_history.append(self.actual_best_accuracy)
 
-    def plot_loss_history(self, best_loss=False):
+    def plot_accuracy_history(self, best_accuracy=False):
 
         """
         Plots curve associated to loss history
@@ -55,13 +58,13 @@ class ExperimentAnalyst:
         :return: Plot of loss
         """
         # If we want to see best loss history
-        if best_loss:
-            plt.plot(range(1, len(self.loss_history) + 1), self.best_loss_history, color='b')
-            plt.ylabel('best loss')
+        if best_accuracy:
+            plt.plot(range(1, len(self.accuracy_history) + 1), self.best_accuracy_history, color='b')
+            plt.ylabel('best accuracy')
 
         else:
-            plt.plot(range(1, len(self.loss_history)+1), self.loss_history, color='b')
-            plt.ylabel('loss')
+            plt.plot(range(1, len(self.accuracy_history) + 1), self.accuracy_history, color='b')
+            plt.ylabel('accuracy')
 
         plt.suptitle(self.tuning_method)
         plt.xlabel('iteration')
