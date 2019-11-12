@@ -574,6 +574,33 @@ class Cnn(Model, torch.nn.Module):
         for param in self.parameters():
             print(param.name, param.data)
 
+    def set_train_valid_loader(self, X_train=None, t_train=None, dtset=None):
+
+        """
+        Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
+        arrays respectively. Finally transform them into data loaders for training and validation
+
+        :param X_train: NxD numpy array of the observations of the training set
+        :param t_train: Nx1 numpy array classes associated with each observations in the training set
+        :param dtset: A torch dataset which contain our train data points and labels
+        :return: A data loarder for training and a data loader for validation
+        """
+
+        if dtset is None:
+            # x_train, t_train, x_valid, t_valid
+            x_t, t_t, x_v, t_v = Dm.validation_split(features=X_train, labels=t_train, valid_size=self.valid_size)
+
+            train_loader = Dm.create_dataloader(x_t, t_t, self.hparams["b_size"], shuffle=True)
+            valid_loader = Dm.create_dataloader(x_v, t_v, self.hparams["b_size"], shuffle=False)
+
+        else:
+            train_set, valid_set = Dm.validation_split(dtset=dtset, valid_size=self.valid_size)
+
+            train_loader = Dm.dataset_to_loader(train_set, self.hparams["b_size"], shuffle=True)
+            valid_loader = Dm.dataset_to_loader(valid_set, self.hparams["b_size"], shuffle=False)
+
+        return train_loader, valid_loader
+
     def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=True):
 
         """
@@ -585,15 +612,7 @@ class Cnn(Model, torch.nn.Module):
         :param verbose: print the loss during training
         :param gpu: True: Train the model on the gpu. False: Train the model on the cpu
         """
-
-        if dtset is None:
-            if X_train is None or t_train is None:
-                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
-                    X_train is None, t_train is None, dtset is None))
-            else:
-                train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"], shuffle=True)
-        else:
-            train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
+        train_loader, valid_loader = self.set_train_valid_loader(X_train, t_train, dtset)
 
         # Go in training to activate dropout
         self.train()
