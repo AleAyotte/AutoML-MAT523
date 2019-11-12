@@ -555,6 +555,10 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.ones_(m.weight)
             torch.nn.init.zeros_(m.bias)
 
+    def print_params(self):
+        for param in self.parameters():
+            print(param.name, param.data)
+
     def switch_device(self, _device):
 
         """
@@ -569,10 +573,6 @@ class Cnn(Model, torch.nn.Module):
             self.device_ = torch.device("cpu")
 
         self.to(self.device_)
-
-    def print_params(self):
-        for param in self.parameters():
-            print(param.name, param.data)
 
     def set_train_valid_loader(self, X_train=None, t_train=None, dtset=None):
 
@@ -613,6 +613,10 @@ class Cnn(Model, torch.nn.Module):
         :param gpu: True: Train the model on the gpu. False: Train the model on the cpu
         """
         train_loader, valid_loader = self.set_train_valid_loader(X_train, t_train, dtset)
+
+        # Indicator for early stopping
+        best_accuracy = 0
+        num_epoch_no_change = 0
 
         # Go in training to activate dropout
         self.train()
@@ -663,6 +667,24 @@ class Cnn(Model, torch.nn.Module):
             out = torch.Tensor.cpu(self.soft(self(X))).numpy()
         return np.argmax(out, axis=1)
 
+    def accuracy(self, dt_loader):
+
+        """
+        Compute the accuracy of the model on a given data loader
+        
+        :param dt_loader: A torch data loader that contain test or validation data
+        :return: The accuracy of the model
+        """
+
+        accuracy = np.array([])
+        for data in dt_loader:
+            features, labels = data[0].to(self.device_), data[1].numpy()
+            pred = self.predict(features)
+
+            accuracy = np.append(accuracy, np.where(pred == labels, 1, 0).mean())
+
+        return accuracy.mean()
+
     def score(self, X=None, t=None, dtset=None):
 
         """
@@ -685,14 +707,7 @@ class Cnn(Model, torch.nn.Module):
 
         self.eval()
 
-        score = np.array([])
-        for data in test_loader:
-            features, labels = data[0].to(self.device_), data[1].numpy()
-            pred = self.predict(features)
-
-            score = np.append(score, np.where(pred == labels, 1, 0).mean())
-
-        return score.mean()
+        return self.accuracy(dt_loader=test_loader)
 
 
 class CnnVanilla(Cnn):
