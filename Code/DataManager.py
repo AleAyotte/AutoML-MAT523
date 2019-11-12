@@ -13,6 +13,7 @@ import numpy as np
 import math
 import copy
 import matplotlib.pyplot as plt
+import torch
 import torchvision
 import torchvision.transforms as transforms
 import torch.utils.data as utils
