@@ -422,7 +422,7 @@ class MLP(Model):
 
 class Cnn(Model, torch.nn.Module):
     def __init__(self, num_classes, activation='relu', lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15,
-                 num_epoch=10):
+                 num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10):
 
         """
         Mother class for all cnn pytorch model. Only build layer and foward are not implemented in this model.
@@ -435,6 +435,10 @@ class Cnn(Model, torch.nn.Module):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
         """
 
         Model.__init__(self, {"lr": Hyperparameter("lr", HPtype.real, [lr]),
@@ -449,6 +453,9 @@ class Cnn(Model, torch.nn.Module):
         # Base parameters (Parameters that will not change during training or hyperparameters search)
         self.classes = num_classes
         self.num_epoch = num_epoch
+        self.valid_size = valid_size
+        self.tol = tol
+        self.num_stop_epoch = num_stop_epoch
         self.device_ = torch.device("cpu")
 
         # Hyperparameters dictionary
@@ -671,7 +678,8 @@ class Cnn(Model, torch.nn.Module):
 
 class CnnVanilla(Cnn):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
-                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 num_stop_epoch=10):
 
         """
         Class that generate a convolutional neural network using the Pytorch library
@@ -694,10 +702,14 @@ class CnnVanilla(Cnn):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch)
+                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.cnn_layer = torch.nn.ModuleList()
@@ -794,7 +806,8 @@ class CnnVanilla(Cnn):
 
 class FastCnnVanilla(Cnn):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
-                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 num_stop_epoch=10):
 
         """
         Class that generate a convolutional neural network using the sequential module of the Pytorch library. Should be
@@ -818,10 +831,14 @@ class FastCnnVanilla(Cnn):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch)
+                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.conv = None
@@ -987,7 +1004,8 @@ class ResModule(torch.nn.Module):
 
 class ResNet(Cnn):
     def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
-                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 num_stop_epoch=10):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
@@ -1015,10 +1033,14 @@ class ResNet(Cnn):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch)
+                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.cnn_layer = torch.nn.ModuleList()
