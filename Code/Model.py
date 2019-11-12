@@ -633,6 +633,10 @@ class Cnn(Model, torch.nn.Module):
         for epoch in range(self.num_epoch):
             sum_loss = 0.0
             it = 0
+
+            # ------------------------------------------------------------------------------------------
+            #                                       TRAINING PART
+            # ------------------------------------------------------------------------------------------
             for step, data in enumerate(train_loader, 0):
                 features, labels = data[0].to(self.device_), data[1].to(self.device_)
 
@@ -648,11 +652,26 @@ class Cnn(Model, torch.nn.Module):
                 sum_loss += loss
                 it += 1
 
+            current_accuracy = self.accuracy(dt_loader=valid_loader)
+
             if verbose:
                 end = time.time()
-                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}".format(
-                    epoch + 1, end - begin, sum_loss / it))
+                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}, validation_accuracy: {}".format(
+                    epoch + 1, end - begin, sum_loss / it, current_accuracy))
                 begin = time.time()
+
+            # ------------------------------------------------------------------------------------------
+            #                                   EARLY STOPPING PART
+            # ------------------------------------------------------------------------------------------
+            if current_accuracy - best_accuracy >= self.tol:
+                best_accuracy = current_accuracy
+                num_epoch_no_change = 0
+
+            elif num_epoch_no_change < self.num_stop_epoch - 1:
+                num_epoch_no_change += 1
+
+            else:
+                break
 
     def predict(self, X):
 
@@ -671,7 +690,7 @@ class Cnn(Model, torch.nn.Module):
 
         """
         Compute the accuracy of the model on a given data loader
-        
+
         :param dt_loader: A torch data loader that contain test or validation data
         :return: The accuracy of the model
         """
