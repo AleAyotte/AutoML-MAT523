@@ -14,7 +14,7 @@ from enum import Enum, unique
 from copy import deepcopy
 from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
-from numpy import argmin
+from ResultManagement import ExperimentAnalyst
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
@@ -23,10 +23,10 @@ domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 
 class HPtuner:
 
-    def __init__(self, model, method):
+    def __init__(self, model, method, test_default_hyperparam=False):
 
         """
-        Class that generate an automatic hyper-parameter tuner for the model specified
+        Class that generates an automatic hyper-parameter tuner for the model specified
 
         :param model: Model on which we want to optimize hyper-parameters {SVM, MLP} # Work in progress
         :param method: Name of the method of optimization to use {'grid_search', 'random_search'} # Work in progress
@@ -40,6 +40,8 @@ class HPtuner:
         self.search_space = self.search_space_ignition(method, model)
         self.search_space_modified = False
         self.log_scaled_hyperparameters = False
+        self.test_default = test_default_hyperparam
+        self.tuning_history = ExperimentAnalyst(method)
 
     def set_search_space(self, hp_search_space_dict):
 
@@ -100,7 +102,7 @@ class HPtuner:
     def grid_search(self, loss):
 
         """
-        Tune our model by testing all possible combination in our search space
+        Tunes our model by testing all possible combination in our search space
 
         :param loss: loss function to minimize
         """
@@ -108,70 +110,41 @@ class HPtuner:
         # We build all possible configurations
         all_configs = ParameterGrid(self.search_space.space)
 
-        # We save the current best configuration of hyperparameter and the loss associated
-        best_hyperparams = {}
-        for hyperparam in self.model.HP_space:
-            best_hyperparams[hyperparam] = self.model.HP_space[hyperparam].value[0]
-
-        lowest_lost = loss(best_hyperparams)
-
         # We find the selection of best hyperparameters according to grid_search
-        pbar = tqdm(total=len(all_configs), postfix='best loss : ' + str(lowest_lost))
+        pbar = tqdm(total=len(all_configs), postfix='best loss : ' + str(1 - self.tuning_history.actual_best_accuracy))
 
         for config in all_configs:
-            current_loss = loss(config)
-            if current_loss < lowest_lost:
-                lowest_lost = current_loss
-                best_hyperparams = config
-                pbar.postfix = 'Best loss' + str(lowest_lost)
+            loss(config)
+            pbar.postfix = 'Best loss' + str(1 - self.tuning_history.actual_best_accuracy)
             pbar.update()
-
-        # We apply changes to original model
-        self.model.set_hyperparameters(best_hyperparams)
 
     def random_search(self, loss, n_evals):
 
         """
-        Tune our model's hyper-parameters by evaluate random points in our search "n_evals" times
+        Tunes our model's hyper-parameters by evaluate random points in our search "n_evals" times
 
         :param loss: loss function to minimize
         :param n_evals: Number of evaluations to do
         """
 
         # We find the selection of best hyperparameters according to random_search
-        best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=n_evals)
-        best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
-
-        # We transform hyper-parameters if some of them are log scaled
-        if self.log_scaled_hyperparameters:
-            self.exponential(best_hyperparams, self.search_space.log_scaled_hyperparam)
-
-        # We apply changes to original model
-        self.model.set_hyperparameters(best_hyperparams)
+        fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=n_evals)
 
     def tpe(self, loss, n_evals):
 
         """
-        Tune our model's hyper-parameter with Tree of Parzen estimators method (tpe)
+        Tunes our model's hyper-parameter with Tree of Parzen estimators method (tpe)
 
         :param loss: loss function to minimize
         :param n_evals: maximal number of evaluations to do
         """
         # We find the selection of best hyperparameters according to tpe
-        best_hyperparams = fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=n_evals)
-        best_hyperparams = space_eval(self.search_space.space, best_hyperparams)
-
-        # We transform hyper-parameters if some of them are log scaled
-        if self.log_scaled_hyperparameters:
-            self.exponential(best_hyperparams, self.search_space.log_scaled_hyperparam)
-
-        # We apply changes to original model
-        self.model.set_hyperparameters(best_hyperparams)
+        fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=n_evals)
 
     def gaussian_process(self, loss, n_evals):
 
         """
-        Tune our model's hyper-parameter using gaussian process (a bayesian optimization method)
+        Tunes our model's hyper-parameter using gaussian process (a bayesian optimization method)
 
         :param loss: loss function to minimize
         :param n_evals: maximal number of evaluations to do
@@ -182,19 +155,10 @@ class HPtuner:
         optimizer.run_optimization(max_iter=n_evals)
         optimizer.plot_acquisition()
 
-        # We save the best hyper-parameters
-        best_hyperparams = self.search_space.change_to_dict([optimizer.X[argmin(optimizer.Y), :]])
-
-        # We transform hyper-parameters if some of them are log scaled
-        if self.log_scaled_hyperparameters:
-            self.exponential(best_hyperparams, self.search_space.log_scaled_hyperparam)
-
-        self.model.set_hyperparameters(best_hyperparams)
-
     def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
 
         """
-        Optimize model's hyper-parameters with the method specified at the ignition of our tuner
+        Optimizes model's hyper-parameters with the method specified at the ignition of our tuner
 
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
@@ -202,6 +166,9 @@ class HPtuner:
         :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
+        # We save results for the default hyperparameters the user wants it
+        if self.test_default:
+            self.test_default_hyperparameters(X, t, dtset, nb_cross_validation)
 
         # We reformat the search space
         self.search_space.reformat_for_tuning()
@@ -225,11 +192,22 @@ class HPtuner:
         else:
             raise NotImplementedError
 
+        # We save best hyper-parameters
+        best_hyperparameters = self.tuning_history.best_hyperparameters
+
+        # We apply changes to original model
+        self.model.set_hyperparameters(best_hyperparameters)
+
+        # We train the model a last time with the best hyper-parameters
+        self.model.fit(X, t, dtset)
+
+        return self.tuning_history
+
     @staticmethod
     def search_space_ignition(method, model):
 
         """
-        Define a correct search space format according to optimization method.
+        Defines a correct search space format according to optimization method.
 
         :return: Search space frame for our tuner
         """
@@ -252,7 +230,7 @@ class HPtuner:
     def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1):
 
         """
-        Build a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
+        Builds a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
 
         :param X: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
         :param t: Nx1 numpy array of classes associated with each observation
@@ -265,29 +243,35 @@ class HPtuner:
 
             def loss(hyperparams):
                 """
-                Return the mean negative value of the accuracy on a cross validation
-                (minimize -1*accuracy is equivalent to maximize accuracy)
+                Returns the mean negative value of the accuracy on a cross validation
+                (minimize (1 - accuracy) is equivalent to maximize accuracy)
 
                 :param hyperparams: dict of hyper-parameters
-                :return: -1*(mean accuracy on cross validation)
+                :return: 1 - (mean accuracy on cross validation)
                 """
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
+                # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
-                return -1*(self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                       nb_of_cross_validation=nb_of_cross_validation))
+                loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                              nb_of_cross_validation=nb_of_cross_validation))
+                # We update our tuning history
+                self.tuning_history.update(loss_value, hyperparams)
+
+                return loss_value
+
             return loss
 
         if self.method == 'gaussian_process':
 
             def loss(hyperparams):
                 """
-                Return the mean negative value of the accuracy on a cross validation
-                (minimize -1*accuracy is equivalent to maximize accuracy)
+                Returns the mean negative value of the accuracy on a cross validation
+                (minimize 1 - accuracy is equivalent to maximize accuracy)
 
                 :param hyperparams: 2d-numpy array containing only values of hyper-parameters
-                :return: -1*(mean accuracy on cross validation)
+                :return: 1 - (mean accuracy on cross validation)
                 """
                 # We extract the values from the 2d-numpy array
                 hyperparams = self.search_space.change_to_dict(hyperparams)
@@ -295,20 +279,36 @@ class HPtuner:
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
+                # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
-                return -1 * (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                         nb_of_cross_validation=nb_of_cross_validation))
+                loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                              nb_of_cross_validation=nb_of_cross_validation))
+                # We update our tuning history
+                self.tuning_history.update(loss_value, hyperparams)
+
+                return loss_value
 
             return loss
 
         else:
             raise NotImplementedError
 
+    def test_default_hyperparameters(self, X, t, dtset, nb_cross_validation):
+
+        """
+        Calculates loss according to default hyper-parameters
+
+        :param nb_cross_validation: Number of data splits and validation to execute
+        """
+
+        default_loss_value = self.model.cross_validation(X, t, dtset, nb_cross_validation)
+        self.tuning_history.update(default_loss_value, SklearnSearchSpace(self.model))
+
     @staticmethod
     def exponential(original_hp_dict, list_of_log_scaled_hp):
 
         """
-        Transform log_scaled hyper-parameter as a power of 10
+        Transforms log_scaled hyper-parameter as a power of 10
 
         :param original_hp_dict: hyper-parameter dictionary
         :param list_of_log_scaled_hp: list of hyper-parameters's name to transform
@@ -333,7 +333,7 @@ class SearchSpace:
     def reset(self):
 
         """
-        Reset search space to default
+        Resets search space to default
         """
 
         self.space = deepcopy(self.default_space)
@@ -342,7 +342,7 @@ class SearchSpace:
     def change_hyperparameter_type(self, hyperparam, new_type):
 
         """
-        Change hyper-parameter type in search space (only useful in GPyOpt search spaces)
+        Changes hyper-parameter type in search space (only useful in GPyOpt search spaces)
 
         :param hyperparam: Name of the hyperparameter
         :param new_type: Type from HPtype
@@ -353,7 +353,7 @@ class SearchSpace:
     def reformat_for_tuning(self):
 
         """
-        Reformat search space so it is now compatible with hyper-parameter optimization method
+        Reformats search space so it is now compatible with hyper-parameter optimization method
         """
 
         pass
@@ -395,7 +395,7 @@ class HyperoptSearchSpace(SearchSpace):
     def reformat_for_tuning(self):
 
         """
-        Insert the whole built space in a hp.choice object that can now be pass as a space parameter
+        Inserts the whole built space in a hp.choice object that can now be pass as a space parameter
         in Hyperopt hyper-parameter optimization algorithm
         """
 
@@ -451,7 +451,7 @@ class GPyOptSearchSpace(SearchSpace):
     def change_hyperparameter_type(self, hp_to_fix, new_type):
 
         """
-        Change hyper-parameter type in the search space
+        Changes hyper-parameter type in the search space
 
         :param hp_to_fix: Name of the hyper-parameter which we want to change his type
         :param new_type: The new type (one among DomainType)
@@ -461,7 +461,7 @@ class GPyOptSearchSpace(SearchSpace):
     def reformat_for_tuning(self):
 
         """
-        Convert the dictionnary to a list containing only internal dictionaries.
+        Converts the dictionnary to a list containing only internal dictionaries.
         Only keep hyper-parameters that has more than a unique discrete value as a domain
         """
 
@@ -479,7 +479,7 @@ class GPyOptSearchSpace(SearchSpace):
     def change_to_dict(self, hyper_paramater_values):
 
         """
-        Build a dictionary of hyper-parameters
+        Builds a dictionary of hyper-parameters
         :param hyper_paramater_values: 2d numpy array of hyper-parameters' values
         :return: dictionary of hyper-parameters
         """
@@ -548,7 +548,7 @@ class ContinuousDomain(Domain):
     def compatible_format(self, tuner_method, label):
 
         """
-        Build the correct format of a uniform distribution according to the method used by the tuner
+        Builds the correct format of a uniform distribution according to the method used by the tuner
 
         :param tuner_method: Name of the method employed by the HPtuner.
         :param label: String defining the name of the hyper-parameter
@@ -580,7 +580,7 @@ class DiscreteDomain(Domain):
     def compatible_format(self, tuner_method, label):
 
         """
-        Build the correct format of discrete set of values according to the method used by the tuner
+        Builds the correct format of discrete set of values according to the method used by the tuner
 
         :param tuner_method: Name of the method employed by the HPtuner.
         :param label: String defining the name of the hyper-parameter
