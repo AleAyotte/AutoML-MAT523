@@ -679,10 +679,12 @@ class Cnn(Model, torch.nn.Module):
                 num_epoch_no_change += 1
 
             elif lr_decay_step < self.num_lr_decay:
+                lr_decay_step += 1
                 learning_rate /= 5
                 optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
                                              eps=self.hparams["eps"], amsgrad=False)
-                
+                num_epoch_no_change = 0
+
             else:
                 break
 
@@ -1078,7 +1080,7 @@ class ResModule(torch.nn.Module):
 
 class ResNet(Cnn):
     def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
-                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
                  num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
