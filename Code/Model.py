@@ -422,7 +422,7 @@ class MLP(Model):
 
 class Cnn(Model, torch.nn.Module):
     def __init__(self, num_classes, activation='relu', lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15,
-                 num_epoch=10):
+                 num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
         Mother class for all cnn pytorch model. Only build layer and foward are not implemented in this model.
@@ -435,6 +435,13 @@ class Cnn(Model, torch.nn.Module):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
+        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
+        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
+                             seem to converge.
         """
 
         Model.__init__(self, {"lr": Hyperparameter("lr", HPtype.real, [lr]),
@@ -449,6 +456,11 @@ class Cnn(Model, torch.nn.Module):
         # Base parameters (Parameters that will not change during training or hyperparameters search)
         self.classes = num_classes
         self.num_epoch = num_epoch
+        self.valid_size = valid_size
+        self.tol = tol
+        self.num_stop_epoch = num_stop_epoch
+        self.lr_decay_rate = lr_decay_rate
+        self.num_lr_decay = num_lr_decay
         self.device_ = torch.device("cpu")
 
         # Hyperparameters dictionary
@@ -548,6 +560,10 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.ones_(m.weight)
             torch.nn.init.zeros_(m.bias)
 
+    def print_params(self):
+        for param in self.parameters():
+            print(param.name, param.data)
+
     def switch_device(self, _device):
 
         """
@@ -563,9 +579,32 @@ class Cnn(Model, torch.nn.Module):
 
         self.to(self.device_)
 
-    def print_params(self):
-        for param in self.parameters():
-            print(param.name, param.data)
+    def set_train_valid_loader(self, X_train=None, t_train=None, dtset=None):
+
+        """
+        Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
+        arrays respectively. Finally transform them into data loaders for training and validation
+
+        :param X_train: NxD numpy array of the observations of the training set
+        :param t_train: Nx1 numpy array classes associated with each observations in the training set
+        :param dtset: A torch dataset which contain our train data points and labels
+        :return: A data loarder for training and a data loader for validation
+        """
+
+        if dtset is None:
+            # x_train, t_train, x_valid, t_valid
+            x_t, t_t, x_v, t_v = Dm.validation_split(features=X_train, labels=t_train, valid_size=self.valid_size)
+
+            train_loader = Dm.create_dataloader(x_t, t_t, self.hparams["b_size"], shuffle=True)
+            valid_loader = Dm.create_dataloader(x_v, t_v, self.hparams["b_size"], shuffle=False)
+
+        else:
+            train_set, valid_set = Dm.validation_split(dtset=dtset, valid_size=self.valid_size)
+
+            train_loader = Dm.dataset_to_loader(train_set, self.hparams["b_size"], shuffle=True)
+            valid_loader = Dm.dataset_to_loader(valid_set, self.hparams["b_size"], shuffle=False)
+
+        return train_loader, valid_loader
 
     def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=True):
 
@@ -578,15 +617,14 @@ class Cnn(Model, torch.nn.Module):
         :param verbose: print the loss during training
         :param gpu: True: Train the model on the gpu. False: Train the model on the cpu
         """
+        
+        train_loader, valid_loader = self.set_train_valid_loader(X_train, t_train, dtset)
 
-        if dtset is None:
-            if X_train is None or t_train is None:
-                raise Exception("Features or labels missing. X is None: {}, t is None: {}, dtset is None: {}".format(
-                    X_train is None, t_train is None, dtset is None))
-            else:
-                train_loader = Dm.create_dataloader(X_train, t_train, self.hparams["b_size"], shuffle=True)
-        else:
-            train_loader = Dm.dataset_to_loader(dtset, self.hparams["b_size"], shuffle=True)
+        # Indicator for early stopping
+        best_accuracy = 0
+        num_epoch_no_change = 0
+        lr_decay_step = 0
+        learning_rate = self.hparams["lr"]
 
         # Go in training to activate dropout
         self.train()
@@ -596,13 +634,17 @@ class Cnn(Model, torch.nn.Module):
         if gpu:
             self.switch_device("gpu")
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["alpha"],
+        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
                                      eps=self.hparams["eps"], amsgrad=False)
         begin = time.time()
 
         for epoch in range(self.num_epoch):
             sum_loss = 0.0
             it = 0
+
+            # ------------------------------------------------------------------------------------------
+            #                                       TRAINING PART
+            # ------------------------------------------------------------------------------------------
             for step, data in enumerate(train_loader, 0):
                 features, labels = data[0].to(self.device_), data[1].to(self.device_)
 
@@ -618,11 +660,33 @@ class Cnn(Model, torch.nn.Module):
                 sum_loss += loss
                 it += 1
 
+            current_accuracy = self.accuracy(dt_loader=valid_loader)
+
             if verbose:
                 end = time.time()
-                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}".format(
-                    epoch + 1, end - begin, sum_loss / it))
+                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}, validation_accuracy: {}".format(
+                    epoch + 1, end - begin, sum_loss / it, current_accuracy))
                 begin = time.time()
+
+            # ------------------------------------------------------------------------------------------
+            #                                   EARLY STOPPING PART
+            # ------------------------------------------------------------------------------------------
+            if current_accuracy - best_accuracy >= self.tol:
+                best_accuracy = current_accuracy
+                num_epoch_no_change = 0
+
+            elif num_epoch_no_change < self.num_stop_epoch - 1:
+                num_epoch_no_change += 1
+
+            elif lr_decay_step < self.num_lr_decay:
+                lr_decay_step += 1
+                learning_rate /= 5
+                optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
+                                             eps=self.hparams["eps"], amsgrad=False)
+                num_epoch_no_change = 0
+
+            else:
+                break
 
     def predict(self, X):
 
@@ -636,6 +700,24 @@ class Cnn(Model, torch.nn.Module):
         with torch.no_grad():
             out = torch.Tensor.cpu(self.soft(self(X))).numpy()
         return np.argmax(out, axis=1)
+
+    def accuracy(self, dt_loader):
+
+        """
+        Compute the accuracy of the model on a given data loader
+
+        :param dt_loader: A torch data loader that contain test or validation data
+        :return: The accuracy of the model
+        """
+
+        accuracy = np.array([])
+        for data in dt_loader:
+            features, labels = data[0].to(self.device_), data[1].numpy()
+            pred = self.predict(features)
+
+            accuracy = np.append(accuracy, np.where(pred == labels, 1, 0).mean())
+
+        return accuracy.mean()
 
     def score(self, X=None, t=None, dtset=None):
 
@@ -659,19 +741,13 @@ class Cnn(Model, torch.nn.Module):
 
         self.eval()
 
-        score = np.array([])
-        for data in test_loader:
-            features, labels = data[0].to(self.device_), data[1].numpy()
-            pred = self.predict(features)
-
-            score = np.append(score, np.where(pred == labels, 1, 0).mean())
-
-        return score.mean()
+        return self.accuracy(dt_loader=test_loader)
 
 
 class CnnVanilla(Cnn):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
-                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
         Class that generate a convolutional neural network using the Pytorch library
@@ -694,10 +770,18 @@ class CnnVanilla(Cnn):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
+        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
+        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
+                             seem to converge.
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch)
+                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
+                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.cnn_layer = torch.nn.ModuleList()
@@ -794,7 +878,8 @@ class CnnVanilla(Cnn):
 
 class FastCnnVanilla(Cnn):
     def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
-                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
         Class that generate a convolutional neural network using the sequential module of the Pytorch library. Should be
@@ -818,10 +903,18 @@ class FastCnnVanilla(Cnn):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
+        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
+        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
+                             seem to converge.
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch)
+                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
+                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.conv = None
@@ -987,7 +1080,8 @@ class ResModule(torch.nn.Module):
 
 class ResNet(Cnn):
     def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
-                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10):
+                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
+                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
@@ -1015,10 +1109,18 @@ class ResNet(Cnn):
         :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
+        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
+        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
+                             seem to converge.
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch)
+                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
+                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.cnn_layer = torch.nn.ModuleList()
