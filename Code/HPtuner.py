@@ -302,7 +302,8 @@ class HPtuner:
         """
 
         default_loss_value = self.model.cross_validation(X, t, dtset, nb_cross_validation)
-        self.tuning_history.update(default_loss_value, SklearnSearchSpace(self.model))
+        search_space = SklearnSearchSpace(self.model)
+        self.tuning_history.update(default_loss_value, search_space.space)
 
     @staticmethod
     def exponential(original_hp_dict, list_of_log_scaled_hp):
