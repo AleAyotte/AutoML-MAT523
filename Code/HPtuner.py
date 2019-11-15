@@ -173,13 +173,14 @@ class HPtuner:
 
         # We save results for the default hyperparameters if the user wanted it
         if self.test_default:
-            self.test_default_hyperparameters(X, t, dtset, nb_cross_validation)
+            self.test_default_hyperparameters(X, t, dtset, nb_cross_validation, valid_size)
 
         # We reformat the search space
         self.search_space.reformat_for_tuning()
 
         # We build loss function
-        loss = self.build_loss_funct(X=X, t=t, dtset=dtset, nb_of_cross_validation=nb_cross_validation)
+        loss = self.build_loss_funct(X=X, t=t, dtset=dtset,
+                                     nb_of_cross_validation=nb_cross_validation, valid_size=valid_size)
 
         # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
