@@ -155,7 +155,7 @@ class HPtuner:
         optimizer.run_optimization(max_iter=n_evals)
         optimizer.plot_acquisition()
 
-    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
+    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1, valid_size=0.2):
 
         """
         Optimizes model's hyper-parameters with the method specified at the ignition of our tuner
@@ -166,7 +166,11 @@ class HPtuner:
         :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
-        # We save results for the default hyperparameters the user wants it
+        # We set the number of cross validation and valid size used, in tuning history
+        self.tuning_history.nbr_of_cross_validation = nb_cross_validation
+        self.tuning_history.validation_size = valid_size
+
+        # We save results for the default hyperparameters if the user wanted it
         if self.test_default:
             self.test_default_hyperparameters(X, t, dtset, nb_cross_validation)
 
@@ -227,7 +231,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1):
+    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1, valid_size=0.2):
 
         """
         Builds a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
@@ -236,6 +240,7 @@ class HPtuner:
         :param t: Nx1 numpy array of classes associated with each observation
         :param nb_of_cross_validation: Number of data splits and validation to execute
         :param dtset: A torch dataset which contain our train data points and labels
+        :param valid_size: percentage of training data used as validation data
         :return: A specific loss function for our tuner
         """
 
@@ -255,7 +260,8 @@ class HPtuner:
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                              nb_of_cross_validation=nb_of_cross_validation))
+                                                              nb_of_cross_validation=nb_of_cross_validation,
+                                                              valid_size=valid_size))
                 # We update our tuning history
                 self.tuning_history.update(loss_value, hyperparams)
 
@@ -282,7 +288,8 @@ class HPtuner:
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                              nb_of_cross_validation=nb_of_cross_validation))
+                                                              nb_of_cross_validation=nb_of_cross_validation,
+                                                              valid_size=valid_size))
                 # We update our tuning history
                 self.tuning_history.update(loss_value, hyperparams)
 
@@ -293,7 +300,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def test_default_hyperparameters(self, X, t, dtset, nb_cross_validation):
+    def test_default_hyperparameters(self, X, t, dtset, nb_cross_validation, valid_size):
 
         """
         Calculates loss according to default hyper-parameters
@@ -301,7 +308,8 @@ class HPtuner:
         :param nb_cross_validation: Number of data splits and validation to execute
         """
 
-        default_loss_value = self.model.cross_validation(X, t, dtset, nb_cross_validation)
+        default_loss_value = self.model.cross_validation(X, t, dtset, valid_size=valid_size,
+                                                         nb_of_cross_validation=nb_cross_validation)
         search_space = SklearnSearchSpace(self.model)
         self.tuning_history.update(default_loss_value, search_space.space)
 
