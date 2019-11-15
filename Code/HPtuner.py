@@ -41,7 +41,7 @@ class HPtuner:
         self.search_space_modified = False
         self.log_scaled_hyperparameters = False
         self.test_default = test_default_hyperparam
-        self.tuning_history = ExperimentAnalyst(method, model)
+        self.tuning_history = ExperimentAnalyst(method, type(model).__name__)
 
     def set_search_space(self, hp_search_space_dict):
 
