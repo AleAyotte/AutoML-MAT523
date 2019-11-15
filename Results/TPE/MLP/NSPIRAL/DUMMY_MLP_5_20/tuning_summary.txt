@@ -12,7 +12,8 @@ Size of training set : 500
 
 Noise : 0.28 
 
-Number of iterations: 151 
+Number of iterations: 81 
 
-Best accuracy obtained: 0.95 
+Best accuracy obtained: 0.96 
 
+Best hyper-parameters found : {'activation': 'relu', 'alpha': 0.8126732938272769, 'batch_size': 100, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layer_sizes': (20, 20, 20, 20, 20), 'learning_rate_init': 0.005698735450937366, 'solver': 'adam'}

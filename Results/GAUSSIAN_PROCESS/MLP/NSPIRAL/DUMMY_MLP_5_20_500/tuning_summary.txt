@@ -14,5 +14,6 @@ Noise : 0.28
 
 Number of iterations: 56 
 
-Best accuracy obtained: 0.935 
+Best accuracy obtained: 0.96 
 
+Best hyper-parameters found : {'alpha': 0.0011615275903532948, 'batch_size': 200, 'learning_rate_init': 0.0032607117429657453}

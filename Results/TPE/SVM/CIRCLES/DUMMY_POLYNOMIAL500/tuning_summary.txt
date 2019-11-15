@@ -14,5 +14,6 @@ Noise : 0.05
 
 Number of iterations: 501 
 
-Best accuracy obtained: 0.995 
+Best accuracy obtained: 1 
 
+Best hyper-parameters found : {'C': 0.7404637966107562, 'coef0': 0.0, 'degree': 2, 'gamma': 'auto', 'kernel': 'poly'}
