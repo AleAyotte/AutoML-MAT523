@@ -8,7 +8,7 @@
 """
 
 from sklearn.model_selection import ParameterGrid
-from hyperopt import hp, fmin, rand, tpe, space_eval
+from hyperopt import hp, fmin, rand, tpe
 from Model import HPtype
 from enum import Enum, unique
 from copy import deepcopy
@@ -167,6 +167,7 @@ class HPtuner:
         :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
+
         # We set the number of cross validation and valid size used, in tuning history
         self.tuning_history.nbr_of_cross_validation = nb_cross_validation
         self.tuning_history.validation_size = valid_size
@@ -287,6 +288,9 @@ class HPtuner:
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
+                # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
+                self.float_to_int(hyperparams)
+
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
@@ -327,6 +331,18 @@ class HPtuner:
         """
         for hyperparam in list_of_log_scaled_hp:
             original_hp_dict[hyperparam] = 10 ** original_hp_dict[hyperparam]
+
+    def float_to_int(self, hp_dict):
+
+        """
+        If an integer hyper-paramater is considered as a float, it will be converted as int.
+        Solves float problem caused by GaussianProcess algorithm.
+
+        :param hp_dict: hyper-parameter dictionary to fix
+        """
+        for hyperparam in hp_dict:
+            if self.model.HP_space[hyperparam].type.value == HPtype.integer.value:
+                hp_dict[hyperparam] = int(hp_dict[hyperparam])
 
 
 class SearchSpace:
