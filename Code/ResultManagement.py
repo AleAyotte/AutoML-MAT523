@@ -2,7 +2,7 @@
     @file:              ResultManagement.py
     @Author:            Nicolas Raymond
     @Creation Date:     09/11/2019
-    @Last modification: 09/11/2019
+    @Last modification: 14/11/2019
     @Description:       This file is dedicated to all result managing functions.
 """
 
@@ -11,9 +11,10 @@ import csv
 import os
 import os.path
 
+
 class ExperimentAnalyst:
 
-    def __init__(self, tuning_method, model):
+    def __init__(self, tuning_method, model_name):
 
         """
         Class that generates intelligent and useful storage and visualization
@@ -22,8 +23,10 @@ class ExperimentAnalyst:
         :param tuning_method: Name of the method used for hyper-parameter tuning
         """
 
-        self.model_name = type(model).__name__
+        self.model_name = model_name
         self.tuning_method = tuning_method
+        self.nbr_of_cross_validation = 1
+        self.validation_size = 0.2
         self.hyperparameters_history = []
         self.best_hyperparameters = {}
         self.accuracy_history = []
@@ -77,23 +80,24 @@ class ExperimentAnalyst:
 
         return plt
 
-    def save_all_results(self, experiment_title, dataset_name, training_size):
+    def save_all_results(self, experiment_title, dataset_name, training_size, noise=None):
 
         """
         Saves all results saved by the ExperimentAnalyst
 
         :param experiment_title: name of the folder that will be created for the experiment
         """
-
-        path = os.path.join("Results")
+        # We get the directory two level upper and insert the folder for our results
+        path = os.path.join(os.pardir, os.getcwd())
+        path = os.path.join(path, os.pardir, "Results")
 
         # We create all folder expected in the folder Results (if they don't already exist)
-        for folder_name in [self.tuning_method, self.model_name, experiment_title]:
-            path = os.path.join(path, folder_name)
+        for folder_name in [self.tuning_method, self.model_name, dataset_name, experiment_title]:
+            path = os.path.join(path, folder_name.upper(), '')
             self.create_folder(path)
 
         # We save all important data for the ExperimentAnalyst in the path concerned
-        self.__save_tuning_summary(path, experiment_title, dataset_name, training_size)
+        self.__save_tuning_summary(path, experiment_title, dataset_name, training_size, noise)
         self.__save_accuracy_history(path)
         self.__save_accuracy_history(path, best_accuracy=True)
         self.__save_hyperparameters(path)
@@ -130,7 +134,7 @@ class ExperimentAnalyst:
 
         self.write_csv(path, 'hyperparameters_hist', self.hyperparameters_history)
 
-    def __save_tuning_summary(self, path, experiment_title, dataset_name, traing_size):
+    def __save_tuning_summary(self, path, experiment_title, dataset_name, traing_size, noise):
 
         """
         Saves a summary of the tuning results in a .txt file
@@ -139,6 +143,7 @@ class ExperimentAnalyst:
         :param experiment_title: string with title of the experiment
         :param dataset_name: string with the name of the dataset
         :param traing_size: int indicating number of elements in training data set
+        :param noise: noise added to the data set
         """
 
         # We open the file
@@ -148,12 +153,24 @@ class ExperimentAnalyst:
         f.write("Experiment title: %s \n\n" % experiment_title)
         f.write("Model name : %s \n\n" % self.model_name)
         f.write("Dataset name : %s \n\n" % dataset_name)
-        f.write("Size of training set : \n\n" % traing_size)
+        f.write("Size of training set : %g \n\n" % traing_size)
+
+        if noise is not None:
+            f.write("Noise : %g \n\n" % noise)
+
         f.write("Number of iterations: %g \n\n" % len(self.accuracy_history))
         f.write("Best accuracy obtained: %g \n\n" % self.actual_best_accuracy)
 
         # We close the file
         f.close()
+
+    def reset(self):
+
+        """
+        Resets ExperimentAnalyst to ignition values
+        """
+
+        self.__init__(self.tuning_method, self.model_name)
 
     @staticmethod
     def write_csv(path, file_name, rows):
