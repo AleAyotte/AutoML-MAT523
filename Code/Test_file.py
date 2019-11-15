@@ -7,7 +7,7 @@ from Code.HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
 
 def main():
 
-    test = "gaussian_process"
+    test = "tpe"
 
     # We generate data for our tests
     dgen = dm.DataGenerator(500, 500, "nSpiral")
@@ -70,11 +70,11 @@ def main():
 
         # We optimize hyper-parameters with random search
         mlp_tuner = HPtuner(mlp, 'tpe', test_default_hyperparam=True)
-        mlp_tuner.set_search_space({'alpha': ContinuousDomain(-6, 0, log_scaled=True),
+        mlp_tuner.set_search_space({'alpha': ContinuousDomain(-8, 0, log_scaled=True),
                                     'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True),
                                     'batch_size': DiscreteDomain(linspace(50, 500, 10, dtype=int))})
 
-        results = mlp_tuner.tune(x_train, t_train, n_evals=150, nb_cross_validation=2)
+        results = mlp_tuner.tune(x_train, t_train, n_evals=80, nb_cross_validation=2)
 
         # We look at the new results
         results.plot_accuracy_history()
