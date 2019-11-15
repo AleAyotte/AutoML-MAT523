@@ -28,8 +28,8 @@ class HPtuner:
         """
         Class that generates an automatic hyper-parameter tuner for the model specified
 
-        :param model: Model on which we want to optimize hyper-parameters {SVM, MLP} # Work in progress
-        :param method: Name of the method of optimization to use {'grid_search', 'random_search'} # Work in progress
+        :param model: Model on which we want to optimize hyper-parameters
+        :param method: Name of the method of optimization to use
         """
 
         if method not in method_list:
@@ -60,6 +60,7 @@ class HPtuner:
         # We reset search space to default if it has been modified (the state at the ignition)
         if self.search_space_modified:
             self.search_space.reset()
+            self.tuning_history.reset()
 
         # We set every search space one by one
         for hyperparam in hp_search_space_dict:
