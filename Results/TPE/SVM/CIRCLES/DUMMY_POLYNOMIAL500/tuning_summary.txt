@@ -1,0 +1,18 @@
+Experiment title: Dummy_polynomial500 
+
+Model name : SVM 
+
+Nbr. of cross validation done in each iteration : 4 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : circles 
+
+Size of training set : 500 
+
+Noise : 0.05 
+
+Number of iterations: 501 
+
+Best accuracy obtained: 0.995 
+
