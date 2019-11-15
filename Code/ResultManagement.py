@@ -65,11 +65,11 @@ class ExperimentAnalyst:
         """
         # If we want to see best loss history
         if best_accuracy:
-            plt.plot(range(1, len(self.accuracy_history) + 1), self.best_accuracy_history, color='b')
+            plt.plot(range(len(self.accuracy_history)), self.best_accuracy_history, color='b')
             plt.ylabel('best accuracy')
 
         else:
-            plt.plot(range(1, len(self.accuracy_history) + 1), self.accuracy_history, color='b')
+            plt.plot(range(len(self.accuracy_history)), self.accuracy_history, color='b')
             plt.ylabel('accuracy')
 
         plt.suptitle(self.tuning_method)
@@ -123,6 +123,7 @@ class ExperimentAnalyst:
         if save_plot:
             plot = self.plot_accuracy_history(best_accuracy, False)
             plot.savefig(plot_path)
+            plot.clf()
 
     def __save_hyperparameters(self, path):
 
@@ -152,6 +153,8 @@ class ExperimentAnalyst:
         # We write the highlights
         f.write("Experiment title: %s \n\n" % experiment_title)
         f.write("Model name : %s \n\n" % self.model_name)
+        f.write("Nbr. of cross validation done in each iteration : %g \n\n" % self.nbr_of_cross_validation)
+        f.write("Validation size in cross validation : %g \n\n" % self.validation_size)
         f.write("Dataset name : %s \n\n" % dataset_name)
         f.write("Size of training set : %g \n\n" % traing_size)
 
