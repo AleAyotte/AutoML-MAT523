@@ -8,7 +8,7 @@
 """
 
 from sklearn.model_selection import ParameterGrid
-from hyperopt import hp, fmin, rand, tpe, space_eval
+from hyperopt import hp, fmin, rand, tpe
 from Model import HPtype
 from enum import Enum, unique
 from copy import deepcopy
@@ -28,8 +28,8 @@ class HPtuner:
         """
         Class that generates an automatic hyper-parameter tuner for the model specified
 
-        :param model: Model on which we want to optimize hyper-parameters {SVM, MLP} # Work in progress
-        :param method: Name of the method of optimization to use {'grid_search', 'random_search'} # Work in progress
+        :param model: Model on which we want to optimize hyper-parameters
+        :param method: Name of the method of optimization to use
         """
 
         if method not in method_list:
@@ -41,7 +41,7 @@ class HPtuner:
         self.search_space_modified = False
         self.log_scaled_hyperparameters = False
         self.test_default = test_default_hyperparam
-        self.tuning_history = ExperimentAnalyst(method)
+        self.tuning_history = ExperimentAnalyst(method, type(model).__name__)
 
     def set_search_space(self, hp_search_space_dict):
 
@@ -60,6 +60,7 @@ class HPtuner:
         # We reset search space to default if it has been modified (the state at the ignition)
         if self.search_space_modified:
             self.search_space.reset()
+            self.tuning_history.reset()
 
         # We set every search space one by one
         for hyperparam in hp_search_space_dict:
@@ -155,7 +156,7 @@ class HPtuner:
         optimizer.run_optimization(max_iter=n_evals)
         optimizer.plot_acquisition()
 
-    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1):
+    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1, valid_size=0.2):
 
         """
         Optimizes model's hyper-parameters with the method specified at the ignition of our tuner
@@ -166,15 +167,21 @@ class HPtuner:
         :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         """
-        # We save results for the default hyperparameters the user wants it
+
+        # We set the number of cross validation and valid size used, in tuning history
+        self.tuning_history.nbr_of_cross_validation = nb_cross_validation
+        self.tuning_history.validation_size = valid_size
+
+        # We save results for the default hyperparameters if the user wanted it
         if self.test_default:
-            self.test_default_hyperparameters(X, t, dtset, nb_cross_validation)
+            self.test_default_hyperparameters(X, t, dtset, nb_cross_validation, valid_size)
 
         # We reformat the search space
         self.search_space.reformat_for_tuning()
 
         # We build loss function
-        loss = self.build_loss_funct(X=X, t=t, dtset=dtset, nb_of_cross_validation=nb_cross_validation)
+        loss = self.build_loss_funct(X=X, t=t, dtset=dtset,
+                                     nb_of_cross_validation=nb_cross_validation, valid_size=valid_size)
 
         # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
@@ -227,7 +234,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1):
+    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1, valid_size=0.2):
 
         """
         Builds a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
@@ -236,6 +243,7 @@ class HPtuner:
         :param t: Nx1 numpy array of classes associated with each observation
         :param nb_of_cross_validation: Number of data splits and validation to execute
         :param dtset: A torch dataset which contain our train data points and labels
+        :param valid_size: percentage of training data used as validation data
         :return: A specific loss function for our tuner
         """
 
@@ -255,7 +263,8 @@ class HPtuner:
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                              nb_of_cross_validation=nb_of_cross_validation))
+                                                              nb_of_cross_validation=nb_of_cross_validation,
+                                                              valid_size=valid_size))
                 # We update our tuning history
                 self.tuning_history.update(loss_value, hyperparams)
 
@@ -279,10 +288,14 @@ class HPtuner:
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
+                # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
+                self.float_to_int(hyperparams)
+
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
-                                                              nb_of_cross_validation=nb_of_cross_validation))
+                                                              nb_of_cross_validation=nb_of_cross_validation,
+                                                              valid_size=valid_size))
                 # We update our tuning history
                 self.tuning_history.update(loss_value, hyperparams)
 
@@ -293,7 +306,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def test_default_hyperparameters(self, X, t, dtset, nb_cross_validation):
+    def test_default_hyperparameters(self, X, t, dtset, nb_cross_validation, valid_size):
 
         """
         Calculates loss according to default hyper-parameters
@@ -301,8 +314,10 @@ class HPtuner:
         :param nb_cross_validation: Number of data splits and validation to execute
         """
 
-        default_loss_value = self.model.cross_validation(X, t, dtset, nb_cross_validation)
-        self.tuning_history.update(default_loss_value, SklearnSearchSpace(self.model))
+        default_loss_value = self.model.cross_validation(X, t, dtset, valid_size=valid_size,
+                                                         nb_of_cross_validation=nb_cross_validation)
+        search_space = SklearnSearchSpace(self.model)
+        self.tuning_history.update(default_loss_value, search_space.space)
 
     @staticmethod
     def exponential(original_hp_dict, list_of_log_scaled_hp):
@@ -316,6 +331,18 @@ class HPtuner:
         """
         for hyperparam in list_of_log_scaled_hp:
             original_hp_dict[hyperparam] = 10 ** original_hp_dict[hyperparam]
+
+    def float_to_int(self, hp_dict):
+
+        """
+        If an integer hyper-paramater is considered as a float, it will be converted as int.
+        Solves float problem caused by GaussianProcess algorithm.
+
+        :param hp_dict: hyper-parameter dictionary to fix
+        """
+        for hyperparam in hp_dict:
+            if self.model.HP_space[hyperparam].type.value == HPtype.integer.value:
+                hp_dict[hyperparam] = int(hp_dict[hyperparam])
 
 
 class SearchSpace:

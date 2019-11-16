@@ -1,0 +1,19 @@
+Experiment title: Dummy_polynomial500 
+
+Model name : SVM 
+
+Nbr. of cross validation done in each iteration : 4 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : circles 
+
+Size of training set : 500 
+
+Noise : 0.05 
+
+Number of iterations: 501 
+
+Best accuracy obtained: 1 
+
+Best hyper-parameters found : {'C': 0.7404637966107562, 'coef0': 0.0, 'degree': 2, 'gamma': 'auto', 'kernel': 'poly'}

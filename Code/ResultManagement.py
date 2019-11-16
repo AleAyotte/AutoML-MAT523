@@ -2,16 +2,19 @@
     @file:              ResultManagement.py
     @Author:            Nicolas Raymond
     @Creation Date:     09/11/2019
-    @Last modification: 09/11/2019
+    @Last modification: 14/11/2019
     @Description:       This file is dedicated to all result managing functions.
 """
 
 import matplotlib.pyplot as plt
+import csv
+import os
+import os.path
 
 
 class ExperimentAnalyst:
 
-    def __init__(self, tuning_method):
+    def __init__(self, tuning_method, model_name):
 
         """
         Class that generates intelligent and useful storage and visualization
@@ -20,7 +23,10 @@ class ExperimentAnalyst:
         :param tuning_method: Name of the method used for hyper-parameter tuning
         """
 
+        self.model_name = model_name
         self.tuning_method = tuning_method
+        self.nbr_of_cross_validation = 1
+        self.validation_size = 0.2
         self.hyperparameters_history = []
         self.best_hyperparameters = {}
         self.accuracy_history = []
@@ -50,7 +56,7 @@ class ExperimentAnalyst:
         else:
             self.best_accuracy_history.append(self.actual_best_accuracy)
 
-    def plot_accuracy_history(self, best_accuracy=False):
+    def plot_accuracy_history(self, best_accuracy=False, show_plot=True):
 
         """
         Plots curve associated to loss history
@@ -59,13 +65,146 @@ class ExperimentAnalyst:
         """
         # If we want to see best loss history
         if best_accuracy:
-            plt.plot(range(1, len(self.accuracy_history) + 1), self.best_accuracy_history, color='b')
+            plt.plot(range(len(self.accuracy_history)), self.best_accuracy_history, color='b')
             plt.ylabel('best accuracy')
 
         else:
-            plt.plot(range(1, len(self.accuracy_history) + 1), self.accuracy_history, color='b')
+            plt.plot(range(len(self.accuracy_history)), self.accuracy_history, color='b')
             plt.ylabel('accuracy')
 
         plt.suptitle(self.tuning_method)
         plt.xlabel('iteration')
-        plt.show()
+
+        if show_plot:
+            plt.show()
+
+        return plt
+
+    def save_all_results(self, experiment_title, dataset_name, training_size, noise=None):
+
+        """
+        Saves all results saved by the ExperimentAnalyst
+
+        :param experiment_title: name of the folder that will be created for the experiment
+        """
+        # We get the directory two level upper and insert the folder for our results
+        path = os.path.join(os.pardir, os.getcwd())
+        path = os.path.join(path, os.pardir, "Results")
+
+        # We create all folder expected in the folder Results (if they don't already exist)
+        for folder_name in [self.tuning_method, self.model_name, dataset_name, experiment_title]:
+            path = os.path.join(path, folder_name.upper(), '')
+            self.create_folder(path)
+
+        # We save all important data for the ExperimentAnalyst in the path concerned
+        self.__save_tuning_summary(path, experiment_title, dataset_name, training_size, noise)
+        self.__save_accuracy_history(path)
+        self.__save_accuracy_history(path, best_accuracy=True)
+        self.__save_hyperparameters(path)
+
+    def __save_accuracy_history(self, path, best_accuracy=False, save_plot=True):
+
+        """
+        Saves accuracy history in a csv file at the path indicated
+
+        :param path: string representing the path that will contain the file
+        :param best_accuracy: boolean that indicates if we want the best accuracy history
+        :param save_plot: boolean indicating if we wish to save the accuracy plot
+        """
+        # Save data in csv file
+        if best_accuracy:
+            self.write_csv(path, 'best_acc_hist', self.best_accuracy_history)
+            plot_path = path+'best_acc_plot'
+        else:
+            self.write_csv(path, 'acc_hist', self.accuracy_history)
+            plot_path = path+'acc_plot'
+
+        # Save plot of accuracy
+        if save_plot:
+            plot = self.plot_accuracy_history(best_accuracy, False)
+            plot.savefig(plot_path)
+            plot.clf()
+
+    def __save_hyperparameters(self, path):
+
+        """
+        Saves all hyper-parameters evaluated in the tuning process
+
+        :param path: string representing the path that will contain the file
+        """
+
+        self.write_csv(path, 'hyperparameters_hist', self.hyperparameters_history)
+
+    def __save_tuning_summary(self, path, experiment_title, dataset_name, traing_size, noise):
+
+        """
+        Saves a summary of the tuning results in a .txt file
+
+        :param path: string representing the path that will contain the file
+        :param experiment_title: string with title of the experiment
+        :param dataset_name: string with the name of the dataset
+        :param traing_size: int indicating number of elements in training data set
+        :param noise: noise added to the data set
+        """
+
+        # We open the file
+        f = open(path+'tuning_summary.txt', "w+")
+
+        # We write the highlights
+        f.write("Experiment title: %s \n\n" % experiment_title)
+        f.write("Model name : %s \n\n" % self.model_name)
+        f.write("Nbr. of cross validation done in each iteration : %g \n\n" % self.nbr_of_cross_validation)
+        f.write("Validation size in cross validation : %g \n\n" % self.validation_size)
+        f.write("Dataset name : %s \n\n" % dataset_name)
+        f.write("Size of training set : %g \n\n" % traing_size)
+
+        if noise is not None:
+            f.write("Noise : %g \n\n" % noise)
+
+        f.write("Number of iterations: %g \n\n" % len(self.accuracy_history))
+        f.write("Best accuracy obtained: %g \n\n" % self.actual_best_accuracy)
+        f.write("Best hyper-parameters found : %s" % str(self.best_hyperparameters))
+
+        # We close the file
+        f.close()
+
+    def reset(self):
+
+        """
+        Resets ExperimentAnalyst to ignition values
+        """
+
+        self.__init__(self.tuning_method, self.model_name)
+
+    @staticmethod
+    def write_csv(path, file_name, rows):
+
+        """
+        Generic method to write rows of data in an existing or new csv file.
+
+        :param path: string representing the path that will contain the file
+        :param file_name: name of the future csv file
+        :param rows: list where each element will be a row in the csv file
+        """
+
+        complete_path = path+file_name+'.csv'
+        with open(complete_path, 'w') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerow(rows)
+
+        csvFile.close()
+
+    @staticmethod
+    def create_folder(directory):
+
+        """
+        Creates a folder with the directory mentioned
+
+        :param directory: String that mention path where the folder is going to be created
+        """
+        try:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
+        except OSError:
+            print('Error while creating directory : ' + directory)
