@@ -448,8 +448,8 @@ class Cnn(Model, torch.nn.Module):
                               "alpha": Hyperparameter("alpha", HPtype.real, [alpha]),
                               "eps": Hyperparameter("eps", HPtype.real, [eps]),
                               "dropout": Hyperparameter("dropout", HPtype.real, [drop_rate]),
-                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size]),
-                              "activation": Hyperparameter("activation", HPtype.categorical, [activation])})
+                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size])
+                              })
 
         torch.nn.Module.__init__(self)
 
@@ -464,17 +464,9 @@ class Cnn(Model, torch.nn.Module):
         self.device_ = torch.device("cpu")
 
         # Hyperparameters dictionary
-        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size,
-                        "activation": activation}
+        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size}
 
-        if activation == "relu":
-            self.activation = torch.nn.ReLU()
-        elif activation == "preLu":
-            self.activation = torch.nn.PReLU()
-        elif activation == "elu":
-            self.activation = torch.nn.ELU()
-        elif activation == "sigmoide":
-            self.activation = torch.nn.Sigmoid()
+        self.activation = activation
 
         self.drop = torch.nn.Dropout(p=self.hparams["dropout"])
         self.soft = torch.nn.Softmax(dim=1)
@@ -525,6 +517,24 @@ class Cnn(Model, torch.nn.Module):
             return int((conv_size - 1) / 2)
         else:
             return 0
+
+    def get_activation_function(self):
+
+        """
+        This method is used to generate activation function to build the CNN layer.
+        
+        :return: A torch.nn module that correspond to the activation function
+        """
+        if self.activation == "relu":
+            return torch.nn.ReLU()
+        elif self.activation == "elu":
+            return torch.nn.ELU
+        elif self.activation == "prelu":
+            return torch.nn.PReLU
+        elif self.activation == "sigmoid":
+            return torch.nn.Sigmoid
+        else:
+            raise Exception("No such activation has this name: {}".format(self.activation))
 
     def set_hyperparameters(self, hyperparams):
 
