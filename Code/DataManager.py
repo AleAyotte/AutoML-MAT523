@@ -76,14 +76,18 @@ class DataGenerator:
         features = np.vstack([self.polar_to_cart(radius, angle)]).T
         return features, labels.astype(dtype='int32')
 
-    def generate_data(self, noise=0, num_class=2):
+    def generate_data(self, noise=0, num_class=2, seed=None):
         """
         Generates random training and testing sample according to the model name
 
         :param noise: The standard deviation of the Gaussian noise added to the data
         :param num_class: Number of classes, only for the nSpiral model
+        :param seed: Set the seed of the numpy random state
         :return: 4 numpy array for training features, training labels, testing features and testing labels respectively
         """
+
+        np.random.seed(seed=seed)
+
         if self.model == "half_moon":
             x_train, t_train = make_moons(self.train_size, noise=noise)
             x_test, t_test = make_moons(self.test_size, noise=noise)
@@ -99,6 +103,9 @@ class DataGenerator:
         # else this model doesn't exist in this program and we want to throw an error message
         else:
             raise Exception("Model: {} does not exist in this program".format(self.model))
+
+        # restore the numpy seed
+        np.random.seed(seed=None)
 
         return x_train, t_train, x_test, t_test
 
