@@ -470,7 +470,7 @@ class Cnn(Model, torch.nn.Module):
         self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size}
 
         self.drop = torch.nn.Dropout(p=self.hparams["dropout"])
-        self.soft = torch.nn.Softmax(dim=1)
+        self.soft = torch.nn.LogSoftmax(dim=-1)
         self.criterion = torch.nn.CrossEntropyLoss()
 
     @staticmethod
@@ -742,7 +742,7 @@ class Cnn(Model, torch.nn.Module):
         """
 
         with torch.no_grad():
-            out = torch.Tensor.cpu(self.soft(self(X))).numpy()
+            out = torch.Tensor.cpu(self(X)).numpy()
         return np.argmax(out, axis=1)
 
     def accuracy(self, dt_loader):
@@ -926,7 +926,7 @@ class CnnVanilla(Cnn):
         for i, l in enumerate(self.fc_layer):
             x = self.fc_layer[i](x) + l(x)
 
-        x = self.out_layer(x)
+        x = self.soft(self.out_layer(x))
         return x
 
 
@@ -1043,7 +1043,7 @@ class FastCnnVanilla(Cnn):
             fc_list.extend([torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]), self.get_activation_function(), self.drop])
 
         # Output layer
-        fc_list.extend([torch.nn.Linear(fc_nodes[-1], self.classes)])
+        fc_list.extend([torch.nn.Linear(fc_nodes[-1], self.classes), self.soft])
 
         self.fc = torch.nn.Sequential(*fc_list)
 
@@ -1278,5 +1278,5 @@ class ResNet(Cnn):
         for i, l in enumerate(self.fc_layer):
             x = self.fc_layer[i](x) + l(x)
 
-        x = self.out_layer(x)
+        x = self.soft(self.out_layer(x))
         return x
