@@ -866,7 +866,12 @@ class CnnVanilla(Cnn):
         self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1],
                                               padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])
                                               ))
+        # Activation function
         self.cnn_layer.append(self.get_activation_function())
+
+        # Pooling layer
+        if pool_list[0, 0] != 0:
+            self.cnn_layer.append(self.build_pooling_layer(pool_list[0]))
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], conv_layer[0, 2], pool_list[0])
@@ -877,6 +882,9 @@ class CnnVanilla(Cnn):
                                                   padding=self.pad_size(conv_layer[it, 1], conv_layer[it, 2])
                                                   ))
             self.cnn_layer.append(self.get_activation_function())
+
+            if pool_list[it, 0] != 0:
+                self.cnn_layer.append(self.build_pooling_layer(pool_list[it]))
 
             # Update the output size
             size = self.conv_out_size(size, conv_layer[it, 1], conv_layer[it, 2], pool_list[it])
@@ -912,11 +920,6 @@ class CnnVanilla(Cnn):
 
         for i, l in enumerate(self.cnn_layer):
             x = self.cnn_layer[i](x) + l(x)
-
-            if self.pool[i, 0] == 1:
-                x = F.max_pool2d(x, (int(self.pool[i, 1]), int(self.pool[i, 2])))
-            elif self.pool[i, 0] == 2:
-                x = F.avg_pool2d(x, (int(self.pool[i, 1]), int(self.pool[i, 2])))
 
         x = x.view(-1, self.num_flat_features)
 
@@ -1004,11 +1007,8 @@ class FastCnnVanilla(Cnn):
                                      padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])),
                      self.get_activation_function()]
         # Pooling
-        if pool_list[0, 0] == 1:
-            conv_list.extend([torch.nn.MaxPool2d(kernel_size=(pool_list[0, 1], pool_list[0, 2]))])
-
-        elif pool_list[0, 0] == 2:
-            conv_list.extend([torch.nn.AvgPool2d(kernel_size=(pool_list[0, 1], pool_list[0, 2]))])
+        if pool_list[0, 0] != 0:
+            conv_list.extend([self.build_pooling_layer(pool_list[0])])
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], conv_layer[0, 2], pool_list[0])
@@ -1019,12 +1019,9 @@ class FastCnnVanilla(Cnn):
             conv_list.extend([torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1],
                                               padding=self.pad_size(conv_layer[it, 1], conv_layer[it, 2])),
                               self.get_activation_function()])
-            # Max pooling
-            if pool_list[it, 0] == 1:
-                conv_list.extend([torch.nn.MaxPool2d(kernel_size=(pool_list[it, 1], pool_list[it, 2]))])
-            # Average pooling
-            elif pool_list[it, 0] == 2:
-                conv_list.extend([torch.nn.AvgPool2d(kernel_size=(pool_list[it, 1], pool_list[it, 2]))])
+            # Pooling
+            if pool_list[it, 0] != 0:
+                conv_list.extend([self.build_pooling_layer(pool_list[it])])
 
             # Update the output size
             size = self.conv_out_size(size, conv_layer[it, 1], conv_layer[it, 2], pool_list[it])
@@ -1215,12 +1212,8 @@ class ResNet(Cnn):
         self.cnn_layer.append(torch.nn.BatchNorm2d(conv[0]))
         self.cnn_layer.append(self.get_activation_function())
 
-        # Pooling
-        if pool1[0] == 1:
-            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=pool1[1]))
-
-        elif pool1[0] == 2:
-            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=pool1[1]))
+        if pool1[0] != 0:
+            self.cnn_layer.append(self.build_pooling_layer(pool1))
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv[1], conv[2], pool1)
@@ -1242,12 +1235,8 @@ class ResNet(Cnn):
             for _ in range(res_config[it, 0] - 1):
                 self.cnn_layer.append(ResModule(f_in, res_config[it, 1], self.activation, twice=False, subsample=False))
 
-        # Pooling
-        if pool2[0] == 1:
-            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=(pool2[1], pool2[2])))
-
-        elif pool2[0] == 2:
-            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=(pool2[1], pool2[2])))
+        if pool2[0] != 0:
+            self.cnn_layer.append(self.build_pooling_layer(pool2))
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(size, res_config[-1, 1], 2, pool2)
