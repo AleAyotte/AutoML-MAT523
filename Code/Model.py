@@ -3,7 +3,7 @@
     @Author:            Nicolas Raymond
                         Alexandre Ayotte
     @Creation Date:     30/09/2019
-    @Last modification: 02/11/2019
+    @Last modification: 16/11/2019
 
     @Reference: 1)  K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In CVPR, 2016.
 
@@ -16,7 +16,7 @@ import sklearn.svm as svm
 import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
 import torch
-import torch.nn.functional as F
+import Module as Module
 import time
 from sklearn.model_selection import train_test_split
 from enum import Enum, unique
@@ -532,11 +532,15 @@ class Cnn(Model, torch.nn.Module):
         if self.activation == "relu":
             return torch.nn.ReLU()
         elif self.activation == "elu":
-            return torch.nn.ELU
+            return torch.nn.ELU()
         elif self.activation == "prelu":
-            return torch.nn.PReLU
+            return torch.nn.PReLU()
         elif self.activation == "sigmoid":
-            return torch.nn.Sigmoid
+            return torch.nn.Sigmoid()
+        elif self.activation == "swish":
+            return Module.Swish()
+        elif self.activation == "mish":
+            return Module.Mish()
         else:
             raise Exception("No such activation has this name: {}".format(self.activation))
 
@@ -596,7 +600,12 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.xavier_normal_(m.weight)
             torch.nn.init.zeros_(m.weight)
         elif type(m) == torch.nn.Conv2d:
-            torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
+
+            if self.activation != "swish" and self.activation != "mish":
+                torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
+            else:
+                torch.nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+
             if not(m.bias is None):
                 torch.nn.init.zeros_(m.bias)
         elif type(m) == torch.nn.BatchNorm2d:
@@ -1059,73 +1068,6 @@ class FastCnnVanilla(Cnn):
         return output
 
 
-class ResModule(torch.nn.Module):
-    def __init__(self, fmap_in, kernel, activation, bias=False, twice=False, subsample=False):
-
-        """
-        Create a residual block from the paper "Deep Residual Learning for Image Recogniton" (Ref 1)
-        @Inspired by: https://github.com/a-martyn/resnet/blob/master/resnet.py
-
-        :param fmap_in: Number of feature maps
-        :param kernel: Kernel size as integer (Example: 3.  For a 3x3 kernel)
-        :param activation: Activation function (default: relu)
-        :param bias: If we want bias at convolutional layer
-        :param twice: If we want twice more features at the output
-        :param subsample: If we want to subsample the image.
-        """
-
-        torch.nn.Module.__init__(self)
-
-        if activation == "relu":
-            self.activation1 = torch.nn.ReLU()
-        elif activation == "preLu":
-            self.activation1 = torch.nn.PReLU()
-        elif activation == "elu":
-            self.activation1 = torch.nn.ELU()
-        elif activation == "sigmoide":
-            self.activation1 = torch.nn.Sigmoid()
-
-        self.activation2 = self.activation1  # Do we need a deep copy?
-
-        # Build layer
-        fmap_out = 2*fmap_in if twice else fmap_in
-
-        self.conv1 = torch.nn.Conv2d(fmap_in, fmap_out, kernel_size=kernel, stride=(2 if subsample else 1),
-                                     padding=Cnn.pad_size(kernel, 1), bias=bias)
-        self.bn1 = torch.nn.BatchNorm2d(fmap_out)
-
-        self.conv2 = torch.nn.Conv2d(fmap_out, fmap_out, kernel_size=kernel, stride=1, padding=Cnn.pad_size(kernel, 1),
-                                     bias=bias)
-        self.bn2 = torch.nn.BatchNorm2d(fmap_out)
-
-        # If subsample is True
-        self.subsample = subsample
-        self.avg_pool = torch.nn.AvgPool2d(kernel_size=1, stride=2)
-
-    def forward(self, x):
-
-        """
-        Define the forward pass of the Residual layer
-
-        :param x: Input tensor of the convolutional layer
-        :return: Output tensor of the residual block
-        """
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.activation1(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.subsample:
-            avg_x = self.avg_pool(x)
-            x = torch.cat((avg_x, torch.zeros_like(avg_x)), dim=1)
-
-        out = self.activation2(out + x)
-
-        return out
-
-
 class ResNet(Cnn):
     def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
                  lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
@@ -1224,7 +1166,8 @@ class ResNet(Cnn):
         f_in = conv[0]
 
         for it in range(len(res_config)):
-            self.cnn_layer.append(ResModule(f_in, res_config[it, 1], self.activation, twice=True, subsample=True))
+            self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
+                                                   self.activation, twice=True, subsample=True))
 
             # Update
             f_in *= 2
@@ -1232,7 +1175,8 @@ class ResNet(Cnn):
             size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
-                self.cnn_layer.append(ResModule(f_in, res_config[it, 1], self.activation, twice=False, subsample=False))
+                self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
+                                                       self.activation, twice=False, subsample=False))
 
         if pool2[0] != 0:
             self.cnn_layer.append(self.build_pooling_layer(pool2))
@@ -1279,45 +1223,3 @@ class ResNet(Cnn):
 
         x = self.soft(self.out_layer(x))
         return x
-
-
-class Swich(torch.nn.Module):
-    def __init__(self):
-
-        """
-        This the constructor of the swish activation function
-        """
-
-        torch.nn.Module.__init__(self)
-
-    def forward(self, x):
-
-        """
-        Define the forward pass of the swish activation function
-        swish(x) = x * sigmoid(x)
-
-        :param x: Input tensor of size Bx... where B is the Batch size and ... correspond to the other dimension
-        :return: Output tensor of the same sime as the input
-        """
-        return x * F.sigmoid(x)
-
-
-class Mish(torch.nn.Module):
-    def __init__(self):
-
-        """
-        This the constructor of the mish activation function
-        """
-
-        torch.nn.Module.__init__(self)
-
-    def forward(self, x):
-
-        """
-        Define the forward pass of the mish activation function
-        mish(x) = x * tanh(softplus(x))
-
-        :param x: Input tensor of size Bx... where B is the Batch size and ... correspond to the other dimension
-        :return: Output tensor of the same sime as the input
-        """
-        return x * torch.tanh(F.softplus(x))
