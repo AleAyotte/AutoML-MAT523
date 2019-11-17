@@ -157,28 +157,28 @@ class HPtuner:
         """
 
         # We look for extra parameters
-        nbr_initial_evals = kwargs.get('nb_initial_evals', 5)
+        nbr_initial_evals = kwargs.get('nbr_initial_evals', 5)
         method_type = kwargs.get('method_type', 'GP')
-        acquistion_fct = kwargs.get('acquistion_function', 'EI')
+        acquisition_fct = kwargs.get('acquisition_function', 'EI')
 
         # We verify if values are eligible for the method
-        if not isinstance(nbr_initial_evals, int):
-            raise Exception('Value passed as nbr_initial_evals is not an int')
+        if not isinstance(nbr_initial_evals, int) or nbr_initial_evals < 0:
+            raise Exception('Value passed as nbr_initial_evals is not a positive integer')
 
         if method_type not in gaussian_process_methods:
             raise Exception('Gaussian process method must be in {}'. format(gaussian_process_methods))
 
-        if acquistion_fct not in acquistions_type:
+        if acquisition_fct not in acquistions_type:
             raise Exception('Acquisition function must be in {}'.format(acquistions_type))
 
         # We make sure that acquisition function en method type fit together
         elif method_type == 'GP_MCMC':
-            acquistion_fct += '_MCMC'
+            acquisition_fct += '_MCMC'
 
         # We execute the hyper-parameter optimization
         optimizer = BayesianOptimization(loss, domain=self.search_space.space,
                                          model_type=method_type, initial_design_numdata=nbr_initial_evals,
-                                         acquisition_type=acquistion_fct)
+                                         acquisition_type=acquisition_fct)
 
         optimizer.run_optimization(max_iter=(n_evals - nbr_initial_evals))
         optimizer.plot_acquisition()
