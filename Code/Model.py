@@ -564,7 +564,7 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.xavier_normal_(m.weight)
             torch.nn.init.zeros_(m.weight)
         elif type(m) == torch.nn.Conv2d:
-            torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
+            torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
             if not(m.bias is None):
                 torch.nn.init.zeros_(m.bias)
         elif type(m) == torch.nn.BatchNorm2d:
