@@ -7,7 +7,7 @@ from Code.HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
 
 def main():
 
-    test = "tpe"
+    test = "gaussian_process"
 
     # We generate data for our tests
     dgen = dm.DataGenerator(500, 500, "nSpiral")
@@ -118,13 +118,13 @@ def main():
                                     'learning_rate_init': ContinuousDomain(-6, 0, log_scaled=True),
                                     'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int)))})
 
-        results = mlp_tuner.tune(x_train, t_train, n_evals=50, nb_cross_validation=2)
+        results = mlp_tuner.tune(x_train, t_train, n_evals=30, nb_cross_validation=2, method_type='GP',
+                                 acquisition_function='MPI')
 
         # We look at the tuning results
         results.plot_accuracy_history()
         results.plot_accuracy_history(best_accuracy=True)
         mlp.plot_data(x_test, t_test)
-        results.save_all_results('Dummy_MLP_5_20_500', dgen.model, dgen.train_size, noise)
 
 
 if __name__ == '__main__':
