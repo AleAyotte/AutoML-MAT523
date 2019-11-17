@@ -43,6 +43,10 @@ class ResModule(torch.nn.Module):
             self.activation1 = torch.nn.ELU()
         elif activation == "sigmoide":
             self.activation1 = torch.nn.Sigmoid()
+        elif activation == "swish":
+            self.activation1 = Swish()
+        elif activation == "mish":
+            self.activation1 = Mish()
 
         self.activation2 = self.activation1  # Do we need a deep copy?
 
