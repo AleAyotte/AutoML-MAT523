@@ -3,7 +3,7 @@
     @Author:            Nicolas Raymond
                         Alexandre Ayotte
     @Creation Date:     30/09/2019
-    @Last modification: 02/11/2019
+    @Last modification: 16/11/2019
 
     @Reference: 1)  K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In CVPR, 2016.
 
@@ -16,11 +16,10 @@ import sklearn.svm as svm
 import sklearn.neural_network as nn
 import matplotlib.pyplot as plt
 import torch
-import torch.nn.functional as F
+import Module as Module
 import time
 from sklearn.model_selection import train_test_split
 from enum import Enum, unique
-from tqdm import tqdm
 
 
 @unique
@@ -448,36 +447,29 @@ class Cnn(Model, torch.nn.Module):
                               "alpha": Hyperparameter("alpha", HPtype.real, [alpha]),
                               "eps": Hyperparameter("eps", HPtype.real, [eps]),
                               "dropout": Hyperparameter("dropout", HPtype.real, [drop_rate]),
-                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size]),
-                              "activation": Hyperparameter("activation", HPtype.categorical, [activation])})
+                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size])
+                              })
 
         torch.nn.Module.__init__(self)
 
         # Base parameters (Parameters that will not change during training or hyperparameters search)
         self.classes = num_classes
         self.num_epoch = num_epoch
+        self.activation = activation
+        self.device_ = torch.device("cpu")
+
+        # early stopping parameters
         self.valid_size = valid_size
         self.tol = tol
         self.num_stop_epoch = num_stop_epoch
         self.lr_decay_rate = lr_decay_rate
         self.num_lr_decay = num_lr_decay
-        self.device_ = torch.device("cpu")
 
         # Hyperparameters dictionary
-        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size,
-                        "activation": activation}
-
-        if activation == "relu":
-            self.activation = torch.nn.ReLU()
-        elif activation == "preLu":
-            self.activation = torch.nn.PReLU()
-        elif activation == "elu":
-            self.activation = torch.nn.ELU()
-        elif activation == "sigmoide":
-            self.activation = torch.nn.Sigmoid()
+        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size}
 
         self.drop = torch.nn.Dropout(p=self.hparams["dropout"])
-        self.soft = torch.nn.Softmax(dim=1)
+        self.soft = torch.nn.LogSoftmax(dim=-1)
         self.criterion = torch.nn.CrossEntropyLoss()
 
     @staticmethod
@@ -505,8 +497,11 @@ class Cnn(Model, torch.nn.Module):
         if np.any(pool[1:] == 0) & pool[0] != 0:
             raise Exception("Pooling kernel of size: {}, {}".format(pool[1], pool[2]))
 
-        elif pool[0] != 0:
+        elif pool[0] == 1 or pool[0] == 2:
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
+
+        elif pool[0] == 3 or pool[0] == 4:
+            out_size = (pool[1], pool[2])
 
         return out_size.astype(int)
 
@@ -525,6 +520,58 @@ class Cnn(Model, torch.nn.Module):
             return int((conv_size - 1) / 2)
         else:
             return 0
+
+    def get_activation_function(self):
+
+        """
+        This method is used to generate an activation function to build the CNN layer.
+
+        :return: A torch.nn module that correspond to the activation function
+        """
+
+        if self.activation == "relu":
+            return torch.nn.ReLU()
+        elif self.activation == "elu":
+            return torch.nn.ELU()
+        elif self.activation == "prelu":
+            return torch.nn.PReLU()
+        elif self.activation == "sigmoid":
+            return torch.nn.Sigmoid()
+        elif self.activation == "swish":
+            return Module.Swish()
+        elif self.activation == "mish":
+            return Module.Mish()
+        else:
+            raise Exception("No such activation has this name: {}".format(self.activation))
+
+    @staticmethod
+    def build_pooling_layer(pool_layer):
+
+        """
+        This method is used to generate a pooling layer to build the convolutional layer
+
+        :param pool_layer: A numpy array of length 3 that represent pooling layer parameters. (type, height, width)
+                        (type: 0: No pooling; 1: MaxPool; 2: AvgPool; 3: Adaptative MaxPool; 4: Adaptative AvgPool)
+        :return: A torch.nn module that correspond to the given pooling specification
+        """
+
+        if pool_layer[0] == 1:
+            return torch.nn.MaxPool2d(kernel_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] == 2:
+            return torch.nn.AvgPool2d(kernel_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] == 3:
+            return torch.nn.AdaptiveMaxPool2d(output_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] == 4:
+            return torch.nn.AdaptiveAvgPool2d(output_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] > 4:
+            raise Exception("pooling type {} does not correspond to a correct type of pooling layer. Choose between"
+                            "\n 0: No pooling; 1: MaxPool; 2: AvgPool; 3: Adaptative MaxPool; 4: Adaptative AvgPool")
+        else:
+            return None
 
     def set_hyperparameters(self, hyperparams):
 
@@ -553,7 +600,12 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.xavier_normal_(m.weight)
             torch.nn.init.zeros_(m.weight)
         elif type(m) == torch.nn.Conv2d:
-            torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
+
+            if self.activation != "swish" and self.activation != "mish":
+                torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
+            else:
+                torch.nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+
             if not(m.bias is None):
                 torch.nn.init.zeros_(m.bias)
         elif type(m) == torch.nn.BatchNorm2d:
@@ -698,7 +750,7 @@ class Cnn(Model, torch.nn.Module):
         """
 
         with torch.no_grad():
-            out = torch.Tensor.cpu(self.soft(self(X))).numpy()
+            out = torch.Tensor.cpu(self(X)).numpy()
         return np.argmax(out, axis=1)
 
     def accuracy(self, dt_loader):
@@ -822,6 +874,12 @@ class CnnVanilla(Cnn):
         self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1],
                                               padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])
                                               ))
+        # Activation function
+        self.cnn_layer.append(self.get_activation_function())
+
+        # Pooling layer
+        if pool_list[0, 0] != 0:
+            self.cnn_layer.append(self.build_pooling_layer(pool_list[0]))
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], conv_layer[0, 2], pool_list[0])
@@ -831,6 +889,11 @@ class CnnVanilla(Cnn):
             self.cnn_layer.append(torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1],
                                                   padding=self.pad_size(conv_layer[it, 1], conv_layer[it, 2])
                                                   ))
+            self.cnn_layer.append(self.get_activation_function())
+
+            if pool_list[it, 0] != 0:
+                self.cnn_layer.append(self.build_pooling_layer(pool_list[it]))
+
             # Update the output size
             size = self.conv_out_size(size, conv_layer[it, 1], conv_layer[it, 2], pool_list[it])
 
@@ -842,10 +905,14 @@ class CnnVanilla(Cnn):
 
         # First fully connected layer
         self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
+        self.fc_layer.append(self.get_activation_function())
+        self.fc_layer.append(self.drop)
 
         # All others hidden layers
         for it in range(1, len(fc_nodes)):
             self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
+            self.fc_layer.append(self.get_activation_function())
+            self.fc_layer.append(self.drop)
 
         # Output layer
         self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
@@ -860,19 +927,14 @@ class CnnVanilla(Cnn):
         """
 
         for i, l in enumerate(self.cnn_layer):
-            x = self.activation(self.cnn_layer[i](x) + l(x))
-
-            if self.pool[i, 0] == 1:
-                x = F.max_pool2d(x, (int(self.pool[i, 1]), int(self.pool[i, 2])))
-            elif self.pool[i, 0] == 2:
-                x = F.avg_pool2d(x, (int(self.pool[i, 1]), int(self.pool[i, 2])))
+            x = self.cnn_layer[i](x) + l(x)
 
         x = x.view(-1, self.num_flat_features)
 
         for i, l in enumerate(self.fc_layer):
-            x = self.drop(self.activation(self.fc_layer[i](x) + l(x)))
+            x = self.fc_layer[i](x) + l(x)
 
-        x = self.out_layer(x)
+        x = self.soft(self.out_layer(x))
         return x
 
 
@@ -950,13 +1012,11 @@ class FastCnnVanilla(Cnn):
         # ------------------------------------------------------------------------------------------
         # First convolutional layer
         conv_list = [torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1],
-                                     padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])), self.activation]
+                                     padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])),
+                     self.get_activation_function()]
         # Pooling
-        if pool_list[0, 0] == 1:
-            conv_list.extend([torch.nn.MaxPool2d(kernel_size=(pool_list[0, 1], pool_list[0, 2]))])
-
-        elif pool_list[0, 0] == 2:
-            conv_list.extend([torch.nn.AvgPool2d(kernel_size=(pool_list[0, 1], pool_list[0, 2]))])
+        if pool_list[0, 0] != 0:
+            conv_list.extend([self.build_pooling_layer(pool_list[0])])
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], conv_layer[0, 2], pool_list[0])
@@ -966,13 +1026,10 @@ class FastCnnVanilla(Cnn):
             # Convolution
             conv_list.extend([torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1],
                                               padding=self.pad_size(conv_layer[it, 1], conv_layer[it, 2])),
-                              self.activation])
-            # Max pooling
-            if pool_list[it, 0] == 1:
-                conv_list.extend([torch.nn.MaxPool2d(kernel_size=(pool_list[it, 1], pool_list[it, 2]))])
-            # Average pooling
-            elif pool_list[it, 0] == 2:
-                conv_list.extend([torch.nn.AvgPool2d(kernel_size=(pool_list[it, 1], pool_list[it, 2]))])
+                              self.get_activation_function()])
+            # Pooling
+            if pool_list[it, 0] != 0:
+                conv_list.extend([self.build_pooling_layer(pool_list[it])])
 
             # Update the output size
             size = self.conv_out_size(size, conv_layer[it, 1], conv_layer[it, 2], pool_list[it])
@@ -987,14 +1044,14 @@ class FastCnnVanilla(Cnn):
         self.num_flat_features = size[0] * size[1] * conv_layer[-1, 0]
 
         # First fully connected layer
-        fc_list = [torch.nn.Linear(self.num_flat_features, fc_nodes[0]), self.activation, self.drop]
+        fc_list = [torch.nn.Linear(self.num_flat_features, fc_nodes[0]), self.get_activation_function(), self.drop]
 
         # All other fully connected layer
         for it in range(1, len(fc_nodes)):
-            fc_list.extend([torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]), self.activation, self.drop])
+            fc_list.extend([torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]), self.get_activation_function(), self.drop])
 
         # Output layer
-        fc_list.extend([torch.nn.Linear(fc_nodes[-1], self.classes)])
+        fc_list.extend([torch.nn.Linear(fc_nodes[-1], self.classes), self.soft])
 
         self.fc = torch.nn.Sequential(*fc_list)
 
@@ -1009,73 +1066,6 @@ class FastCnnVanilla(Cnn):
         conv_out = self.conv(x)
         output = self.fc(conv_out.view(-1, self.num_flat_features))
         return output
-
-
-class ResModule(torch.nn.Module):
-    def __init__(self, fmap_in, kernel, activation, bias=False, twice=False, subsample=False):
-
-        """
-        Create a residual block from the paper "Deep Residual Learning for Image Recogniton" (Ref 1)
-        @Inspired by: https://github.com/a-martyn/resnet/blob/master/resnet.py
-
-        :param fmap_in: Number of feature maps
-        :param kernel: Kernel size as integer (Example: 3.  For a 3x3 kernel)
-        :param activation: Activation function (default: relu)
-        :param bias: If we want bias at convolutional layer
-        :param twice: If we want twice more features at the output
-        :param subsample: If we want to subsample the image.
-        """
-
-        torch.nn.Module.__init__(self)
-
-        if activation == "relu":
-            self.activation1 = torch.nn.ReLU()
-        elif activation == "preLu":
-            self.activation1 = torch.nn.PReLU()
-        elif activation == "elu":
-            self.activation1 = torch.nn.ELU()
-        elif activation == "sigmoide":
-            self.activation1 = torch.nn.Sigmoid()
-
-        self.activation2 = self.activation1  # Do we need a deep copy?
-
-        # Build layer
-        fmap_out = 2*fmap_in if twice else fmap_in
-
-        self.conv1 = torch.nn.Conv2d(fmap_in, fmap_out, kernel_size=kernel, stride=(2 if subsample else 1),
-                                     padding=Cnn.pad_size(kernel, 1), bias=bias)
-        self.bn1 = torch.nn.BatchNorm2d(fmap_out)
-
-        self.conv2 = torch.nn.Conv2d(fmap_out, fmap_out, kernel_size=kernel, stride=1, padding=Cnn.pad_size(kernel, 1),
-                                     bias=bias)
-        self.bn2 = torch.nn.BatchNorm2d(fmap_out)
-
-        # If subsample is True
-        self.subsample = subsample
-        self.avg_pool = torch.nn.AvgPool2d(kernel_size=1, stride=2)
-
-    def forward(self, x):
-
-        """
-        Define the forward pass of the Residual layer
-
-        :param x: Input tensor of the convolutional layer
-        :return: Output tensor of the residual block
-        """
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.activation1(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.subsample:
-            avg_x = self.avg_pool(x)
-            x = torch.cat((avg_x, torch.zeros_like(avg_x)), dim=1)
-
-        out = self.activation2(out + x)
-
-        return out
 
 
 class ResNet(Cnn):
@@ -1132,9 +1122,9 @@ class ResNet(Cnn):
         if input_dim is None:
             input_dim = np.array([32, 32, 3])
 
-        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, activation, input_dim)
+        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, input_dim)
 
-    def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, activation, input_dim):
+    def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, input_dim):
 
         """
         Create the model architecture
@@ -1152,7 +1142,6 @@ class ResNet(Cnn):
                       [1]: Pooling kernel height
                       [2]: Pooling kernel width
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
-        :param activation: Activation function (default: relu)
         :param input_dim: Image input dimensions [height, width, deep]
         """
 
@@ -1162,14 +1151,10 @@ class ResNet(Cnn):
         # First convolutional layer
         self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2])))
         self.cnn_layer.append(torch.nn.BatchNorm2d(conv[0]))
-        self.cnn_layer.append(self.activation)
+        self.cnn_layer.append(self.get_activation_function())
 
-        # Pooling
-        if pool1[0] == 1:
-            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=pool1[1]))
-
-        elif pool1[0] == 2:
-            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=pool1[1]))
+        if pool1[0] != 0:
+            self.cnn_layer.append(self.build_pooling_layer(pool1))
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv[1], conv[2], pool1)
@@ -1181,7 +1166,8 @@ class ResNet(Cnn):
         f_in = conv[0]
 
         for it in range(len(res_config)):
-            self.cnn_layer.append(ResModule(f_in, res_config[it, 1], activation, twice=True, subsample=True))
+            self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
+                                                   self.activation, twice=True, subsample=True))
 
             # Update
             f_in *= 2
@@ -1189,14 +1175,11 @@ class ResNet(Cnn):
             size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
-                self.cnn_layer.append(ResModule(f_in, res_config[it, 1], activation, twice=False, subsample=False))
+                self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
+                                                       self.activation, twice=False, subsample=False))
 
-        # Pooling
-        if pool2[0] == 1:
-            self.cnn_layer.append(torch.nn.MaxPool2d(kernel_size=(pool2[1], pool2[2])))
-
-        elif pool2[0] == 2:
-            self.cnn_layer.append(torch.nn.AvgPool2d(kernel_size=(pool2[1], pool2[2])))
+        if pool2[0] != 0:
+            self.cnn_layer.append(self.build_pooling_layer(pool2))
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(size, res_config[-1, 1], 2, pool2)
@@ -1209,12 +1192,14 @@ class ResNet(Cnn):
 
         # First fully connected layer
         self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
-        self.fc_layer.append(self.activation)
+        self.fc_layer.append(self.get_activation_function())
+        self.fc_layer.append(self.drop)
 
         # All others hidden layers
         for it in range(1, len(fc_nodes)):
             self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
-            self.fc_layer.append(self.activation)
+            self.fc_layer.append(self.get_activation_function())
+            self.fc_layer.append(self.drop)
 
         # Output layer
         self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
@@ -1234,7 +1219,7 @@ class ResNet(Cnn):
         x = x.view(-1, self.num_flat_features)
 
         for i, l in enumerate(self.fc_layer):
-            x = self.drop(self.fc_layer[i](x) + l(x))
+            x = self.fc_layer[i](x) + l(x)
 
-        x = self.out_layer(x)
+        x = self.soft(self.out_layer(x))
         return x
