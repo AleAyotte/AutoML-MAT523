@@ -104,6 +104,9 @@ class DataGenerator:
         else:
             raise Exception("Model: {} does not exist in this program".format(self.model))
 
+        # restore the numpy seed
+        np.random.seed(seed=None)
+
         return x_train, t_train, x_test, t_test
 
 
