@@ -135,7 +135,7 @@ class ExperimentAnalyst:
 
         self.write_csv(path, 'hyperparameters_hist', self.hyperparameters_history)
 
-    def __save_tuning_summary(self, path, experiment_title, dataset_name, traing_size, noise):
+    def __save_tuning_summary(self, path, experiment_title, dataset_name, traing_size, noise, test_accuracy):
 
         """
         Saves a summary of the tuning results in a .txt file
@@ -145,6 +145,7 @@ class ExperimentAnalyst:
         :param dataset_name: string with the name of the dataset
         :param traing_size: int indicating number of elements in training data set
         :param noise: noise added to the data set
+        :param test_accuracy: accuracy obtained with test data set
         """
 
         # We open the file
@@ -161,9 +162,10 @@ class ExperimentAnalyst:
         if noise is not None:
             f.write("Noise : %g \n\n" % noise)
 
-        f.write("Number of iterations: %g \n\n" % len(self.accuracy_history))
-        f.write("Best accuracy obtained: %g \n\n" % self.actual_best_accuracy)
+        f.write("Number of iterations : %g \n\n" % len(self.accuracy_history))
+        f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
         f.write("Best hyper-parameters found : %s" % str(self.best_hyperparameters))
+        f.write("Accuracy with test data set : %g" % test_accuracy)
 
         # We close the file
         f.close()
