@@ -103,7 +103,7 @@ class Swish(torch.nn.Module):
         :param x: Input tensor of size Bx... where B is the Batch size and ... correspond to the other dimension
         :return: Output tensor of the same sime as the input
         """
-        return x * F.sigmoid(x)
+        return x * torch.sigmoid(x)
 
 
 class Mish(torch.nn.Module):
