@@ -19,6 +19,8 @@ from ResultManagement import ExperimentAnalyst
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
+gaussian_process_methods = ['GP', 'GP_MCMC']
+acquistions_type = ['EI', 'MPI']
 
 
 class HPtuner:
@@ -142,21 +144,46 @@ class HPtuner:
         # We find the selection of best hyperparameters according to tpe
         fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=n_evals)
 
-    def gaussian_process(self, loss, n_evals):
+    def gaussian_process(self, loss, n_evals, **kwargs):
 
         """
         Tunes our model's hyper-parameter using gaussian process (a bayesian optimization method)
 
         :param loss: loss function to minimize
         :param n_evals: maximal number of evaluations to do
+        :param kwargs: - nbr_initial_evals : number of points to evaluate before the beginning of the test
+                       - method_type : one method available in ['GP', 'GP_MCMC']
+                       - acquisition_function : one function available in ['EI', 'MPI']
         """
 
+        # We look for extra parameters
+        nbr_initial_evals = kwargs.get('nb_initial_evals', 5)
+        method_type = kwargs.get('method_type', 'GP')
+        acquistion_fct = kwargs.get('acquistion_function', 'EI')
+
+        # We verify if values are eligible for the method
+        if not isinstance(nbr_initial_evals, int):
+            raise Exception('Value passed as nbr_initial_evals is not an int')
+
+        if method_type not in gaussian_process_methods:
+            raise Exception('Gaussian process method must be in {}'. format(gaussian_process_methods))
+
+        if acquistion_fct not in acquistions_type:
+            raise Exception('Acquisition function must be in {}'.format(acquistions_type))
+
+        # We make sure that acquisition function en method type fit together
+        elif method_type == 'GP_MCMC':
+            acquistion_fct += '_MCMC'
+
         # We execute the hyper-parameter optimization
-        optimizer = BayesianOptimization(loss, domain=self.search_space.space)
-        optimizer.run_optimization(max_iter=n_evals)
+        optimizer = BayesianOptimization(loss, domain=self.search_space.space,
+                                         model_type=method_type, initial_design_numdata=nbr_initial_evals,
+                                         acquisition_type=acquistion_fct)
+
+        optimizer.run_optimization(max_iter=(n_evals - nbr_initial_evals))
         optimizer.plot_acquisition()
 
-    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1, valid_size=0.2):
+    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1, valid_size=0.2, **kwargs):
 
         """
         Optimizes model's hyper-parameters with the method specified at the ignition of our tuner
@@ -166,6 +193,7 @@ class HPtuner:
         :param dtset: A torch dataset which contain our train data points and labels
         :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
+        :param valid_size: Percentage of training data used as validation data
         """
 
         # We set the number of cross validation and valid size used, in tuning history
@@ -174,6 +202,7 @@ class HPtuner:
 
         # We save results for the default hyperparameters if the user wanted it
         if self.test_default:
+            n_evals -= 1
             self.test_default_hyperparameters(X, t, dtset, nb_cross_validation, valid_size)
 
         # We reformat the search space
@@ -194,7 +223,7 @@ class HPtuner:
             self.tpe(loss, n_evals)
 
         elif self.method == 'gaussian_process':
-            self.gaussian_process(loss, n_evals)
+            self.gaussian_process(loss, n_evals, **kwargs)
 
         else:
             raise NotImplementedError
