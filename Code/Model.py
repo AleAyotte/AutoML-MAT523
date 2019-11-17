@@ -20,7 +20,6 @@ import torch.nn.functional as F
 import time
 from sklearn.model_selection import train_test_split
 from enum import Enum, unique
-from tqdm import tqdm
 
 
 @unique
@@ -1280,3 +1279,45 @@ class ResNet(Cnn):
 
         x = self.soft(self.out_layer(x))
         return x
+
+
+class Swich(torch.nn.Module):
+    def __init__(self):
+
+        """
+        This the constructor of the swish activation function
+        """
+
+        torch.nn.Module.__init__(self)
+
+    def forward(self, x):
+
+        """
+        Define the forward pass of the swish activation function
+        swish(x) = x * sigmoid(x)
+
+        :param x: Input tensor of size Bx... where B is the Batch size and ... correspond to the other dimension
+        :return: Output tensor of the same sime as the input
+        """
+        return x * F.sigmoid(x)
+
+
+class Mish(torch.nn.Module):
+    def __init__(self):
+
+        """
+        This the constructor of the mish activation function
+        """
+
+        torch.nn.Module.__init__(self)
+
+    def forward(self, x):
+
+        """
+        Define the forward pass of the mish activation function
+        mish(x) = x * tanh(softplus(x))
+
+        :param x: Input tensor of size Bx... where B is the Batch size and ... correspond to the other dimension
+        :return: Output tensor of the same sime as the input
+        """
+        return x * torch.tanh(F.softplus(x))
