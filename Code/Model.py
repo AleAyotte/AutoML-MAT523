@@ -498,8 +498,11 @@ class Cnn(Model, torch.nn.Module):
         if np.any(pool[1:] == 0) & pool[0] != 0:
             raise Exception("Pooling kernel of size: {}, {}".format(pool[1], pool[2]))
 
-        elif pool[0] != 0:
+        elif pool[0] == 1 or pool[0] == 2:
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
+
+        elif pool[0] == 3 or pool[0] == 4:
+            out_size = (pool[1], pool[2])
 
         return out_size.astype(int)
 
@@ -522,10 +525,11 @@ class Cnn(Model, torch.nn.Module):
     def get_activation_function(self):
 
         """
-        This method is used to generate activation function to build the CNN layer.
+        This method is used to generate an activation function to build the CNN layer.
 
         :return: A torch.nn module that correspond to the activation function
         """
+
         if self.activation == "relu":
             return torch.nn.ReLU()
         elif self.activation == "elu":
@@ -536,6 +540,35 @@ class Cnn(Model, torch.nn.Module):
             return torch.nn.Sigmoid
         else:
             raise Exception("No such activation has this name: {}".format(self.activation))
+
+    @staticmethod
+    def build_pooling_layer(pool_layer):
+
+        """
+        This method is used to generate a pooling layer to build the convolutional layer
+
+        :param pool_layer: A numpy array of length 3 that represent pooling layer parameters. (type, height, width)
+                        (type: 0: No pooling; 1: MaxPool; 2: AvgPool; 3: Adaptative MaxPool; 4: Adaptative AvgPool)
+        :return: A torch.nn module that correspond to the given pooling specification
+        """
+
+        if pool_layer[0] == 1:
+            return torch.nn.MaxPool2d(kernel_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] == 2:
+            return torch.nn.AvgPool2d(kernel_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] == 3:
+            return torch.nn.AdaptiveMaxPool2d(output_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] == 4:
+            return torch.nn.AdaptiveAvgPool2d(output_size=(pool_layer[1], pool_layer[2]))
+
+        elif pool_layer[0] > 4:
+            raise Exception("pooling type {} does not correspond to a correct type of pooling layer. Choose between"
+                            "\n 0: No pooling; 1: MaxPool; 2: AvgPool; 3: Adaptative MaxPool; 4: Adaptative AvgPool")
+        else:
+            return None
 
     def set_hyperparameters(self, hyperparams):
 
