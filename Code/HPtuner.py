@@ -114,11 +114,12 @@ class HPtuner:
         all_configs = ParameterGrid(self.search_space.space)
 
         # We find the selection of best hyperparameters according to grid_search
-        pbar = tqdm(total=len(all_configs), postfix='best loss : ' + str(1 - self.tuning_history.actual_best_accuracy))
+        pbar = tqdm(total=len(all_configs), postfix='best loss : ' +
+                                                    str(round(1 - self.tuning_history.actual_best_accuracy, 6)))
 
         for config in all_configs:
             loss(config)
-            pbar.postfix = 'Best loss' + str(1 - self.tuning_history.actual_best_accuracy)
+            pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 6))
             pbar.update()
 
     def random_search(self, loss, n_evals):
@@ -210,7 +211,8 @@ class HPtuner:
 
         # We build loss function
         loss = self.build_loss_funct(X=X, t=t, dtset=dtset,
-                                     nb_of_cross_validation=nb_cross_validation, valid_size=valid_size)
+                                     nb_of_cross_validation=nb_cross_validation, valid_size=valid_size,
+                                     n_evals=n_evals)
 
         # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
@@ -263,7 +265,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1, valid_size=0.2):
+    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1, valid_size=0.2, n_evals=10):
 
         """
         Builds a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
@@ -303,7 +305,12 @@ class HPtuner:
 
         if self.method == 'gaussian_process':
 
+            # We start a loading bar
+            pbar = tqdm(total=n_evals, postfix='best loss : ' +
+                                               str(round(1 - self.tuning_history.actual_best_accuracy, 6)))
+
             def loss(hyperparams):
+
                 """
                 Returns the mean negative value of the accuracy on a cross validation
                 (minimize 1 - accuracy is equivalent to maximize accuracy)
@@ -325,8 +332,11 @@ class HPtuner:
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                               nb_of_cross_validation=nb_of_cross_validation,
                                                               valid_size=valid_size))
-                # We update our tuning history
+
+                # We update our tuning history and the loading bar
                 self.tuning_history.update(loss_value, hyperparams)
+                pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 6))
+                pbar.update()
 
                 return loss_value
 
