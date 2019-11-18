@@ -501,7 +501,7 @@ class Cnn(Model, torch.nn.Module):
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
 
         elif pool[0] == 3 or pool[0] == 4:
-            out_size = (pool[1], pool[2])
+            out_size = np.array([pool[1], pool[2]])
 
         return out_size.astype(int)
 
@@ -1190,19 +1190,24 @@ class ResNet(Cnn):
         # Compute the fully connected input layer size
         self.num_flat_features = size[0] * size[1] * f_in
 
-        # First fully connected layer
-        self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
-        self.fc_layer.append(self.get_activation_function())
-        self.fc_layer.append(self.drop)
-
-        # All others hidden layers
-        for it in range(1, len(fc_nodes)):
-            self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
+        if fc_nodes is None:
+            num_last_nodes = self.num_flat_features
+        else:
+            # First fully connected layer
+            self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
             self.fc_layer.append(self.get_activation_function())
             self.fc_layer.append(self.drop)
 
+            # All others hidden layers
+            for it in range(1, len(fc_nodes)):
+                self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
+                self.fc_layer.append(self.get_activation_function())
+                self.fc_layer.append(self.drop)
+
+            num_last_nodes = fc_nodes[-1]
+
         # Output layer
-        self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
+        self.out_layer = torch.nn.Linear(num_last_nodes, self.classes)
 
     def forward(self, x):
 
