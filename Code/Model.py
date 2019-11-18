@@ -501,7 +501,7 @@ class Cnn(Model, torch.nn.Module):
             out_size = np.floor([out_size[0] / pool[1], out_size[1] / pool[2]])
 
         elif pool[0] == 3 or pool[0] == 4:
-            out_size = (pool[1], pool[2])
+            out_size = np.array([pool[1], pool[2]])
 
         return out_size.astype(int)
 
