@@ -1167,12 +1167,12 @@ class ResNet(Cnn):
 
         for it in range(len(res_config)):
             self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
-                                                   self.activation, twice=True, subsample=True))
+                                                   self.activation, twice=(it != 0), subsample=(it != 0)))
 
             # Update
-            f_in *= 2
-            print("size = {}".format(size))
-            size = size / 2
+            if it > 0:
+                f_in *= 2
+                size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
                 self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
