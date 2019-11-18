@@ -2,14 +2,17 @@
     @file:              DataGen.py
     @Author:            Alexandre Ayotte
     @Creation Date:     29/09/2019
-    @Last modification: 02/11/2019
-    @Description:       This program generates randoms data for toy problems that we want to solve with autoML methods
+    @Last modification: 17/11/2019
+    @Description:       This program generates randoms data  for toy problems, load dataset from torchvision and csv
+                        and provide useful method to manipulate data.
+
 """
 
 from sklearn.datasets import make_moons
 from sklearn.datasets import make_circles
 from sklearn.model_selection import train_test_split
 import numpy as np
+import pandas as pd
 import math
 import copy
 import matplotlib.pyplot as plt
@@ -206,6 +209,24 @@ def load_mnist():
     testset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
     return trainset, testset
+
+
+def load_csv(path, label_col, test_split=0.2):
+    """
+    Load a dataset from a csv file
+
+    :param path: The path of the csv file.
+    :param label_col: The number of the column that contain the labels. (First column is 0)
+    :param test_split: Proportion of the dataset that will be use as test data (Default 0.2 = 20%)
+    :return: train and valid features as numpy arrays and train and valid labels as numpy arrays
+    """
+    data_csv = pd.read_csv(path).values
+    features = np.delete(data_csv, label_col, axis=1)
+    labels = data_csv[:, label_col]
+
+    normalized_features = (features - features.mean(axis=0)) / features.std(axis=0)
+
+    return validation_split(normalized_features, labels, valid_size=test_split)
 
 
 def plot_data(data, target):
