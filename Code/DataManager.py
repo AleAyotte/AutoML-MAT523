@@ -197,6 +197,74 @@ def load_cifar10():
     return trainset, testset
 
 
+def load_cifar100():
+    """
+    Load the CIFAR100 dataset using pytorch
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR100 dataset as pytorch Dataset
+    """
+
+    # Data augmentation for training
+    transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
+                                          transforms.RandomHorizontalFlip(0.5),
+                                          transforms.ToTensor(),
+                                          transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+
+    # For the test set, we just want to normalize it
+    transform_test = transforms.Compose([transforms.ToTensor(),
+                                         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+    trainset = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=transform_train)
+    testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=transform_test)
+
+    return trainset, testset
+
+
+def load_svhn():
+    """
+    Load the SVHN dataset using pytorch
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    """
+
+    # Data augmentation for training
+    transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
+                                          transforms.ToTensor(),
+                                          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    # For the test set, we just want to normalize it
+    transform_test = transforms.Compose([transforms.ToTensor(),
+                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    trainset = torchvision.datasets.SVHN(root='./data', split='train', download=True, transform=transform_train)
+    testset = torchvision.datasets.SVHN(root='./data', split='test', download=True, transform=transform_test)
+
+    return trainset, testset
+
+
+def load_stl10():
+    """
+    Load the SVHN dataset using pytorch
+    inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
+
+    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    """
+
+    # Data augmentation for training
+    transform_train = transforms.Compose([transforms.ToTensor(),
+                                          transforms.Normalize((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))])
+
+    # For the test set, we just want to normalize it
+    transform_test = transforms.Compose([transforms.ToTensor(),
+                                         transforms.Normalize((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))])
+
+    trainset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform_train)
+    testset = torchvision.datasets.STL10(root='./data', split='test', download=True, transform=transform_test)
+
+    return trainset, testset
+
+
 def load_mnist():
     """
     Load the MNIST dataset using pytorch and normalize it using is
