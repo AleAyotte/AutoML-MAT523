@@ -171,8 +171,11 @@ class HPtuner:
         if acquisition_fct not in acquistions_type:
             raise Exception('Acquisition function must be in {}'.format(acquistions_type))
 
+        # We update tuning history method type
+        self.tuning_history.method_type = method_type + acquisition_fct
+
         # We make sure that acquisition function en method type fit together
-        elif method_type == 'GP_MCMC':
+        if method_type == 'GP_MCMC':
             acquisition_fct += '_MCMC'
 
         # We execute the hyper-parameter optimization
