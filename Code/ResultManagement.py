@@ -25,6 +25,7 @@ class ExperimentAnalyst:
 
         self.model_name = model_name
         self.tuning_method = tuning_method
+        self.method_type = None               # Only used when tuning method is a gaussian process
         self.nbr_of_cross_validation = 1
         self.validation_size = 0.2
         self.hyperparameters_history = []
@@ -93,8 +94,15 @@ class ExperimentAnalyst:
         :param test_accuracy: accuracy obtained with test data set
         """
 
+        # We initialize a list with all the folder needed to save the results
+        folders_name = [experiment_title, self.tuning_method]
+
+        # We adjust add an element to the list if there's a method type
+        if self.method_type is not None:
+            folders_name.append(self.method_type)
+
         # We create all folder expected in the folder Results (if they don't already exist)
-        for folder_name in [self.tuning_method, self.model_name, dataset_name, experiment_title]:
+        for folder_name in [experiment_title, self.tuning_method]:
             path = os.path.join(path, folder_name.upper(), '')
             self.create_folder(path)
 
@@ -145,7 +153,7 @@ class ExperimentAnalyst:
         :param path: string representing the path that will contain the file
         :param experiment_title: string with title of the experiment
         :param dataset_name: string with the name of the dataset
-        :param trainingg_size: int indicating number of elements in training data set
+        :param training_size: int indicating number of elements in training data set
         :param noise: noise added to the data set
         :param test_accuracy: accuracy obtained with test data set
         """
