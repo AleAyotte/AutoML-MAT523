@@ -46,7 +46,7 @@ def nSpiralExperiment1():
     # We do a deep copy of our MLP for the test, set the experiment title and save the path to save the results
     save = pickle.dumps(mlp)
     mlp_for_rs = pickle.loads(save)
-    experiment_title = 'MLP_4_20_1000'
+    experiment_title = 'nSpiral1'
     results_path = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
     results_path = os.path.join(results_path, '')
 
