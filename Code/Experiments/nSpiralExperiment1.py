@@ -32,13 +32,12 @@ def nSpiralExperiment1():
     x_train, t_train, x_test, t_test = dgen.generate_data(noise, 5, seed=10512)
     nb_cross_validation = 2
     nb_evals = 500
-    dm.plot_data(x_train, t_train)
 
     # We initialize an MLP with default hyper-parameters and 3 hidden layers of 20 neurons to classify our data
     # and test its performance on both training and test data sets
     mlp = mod.MLP((20, 20, 20, 20), max_iter=1000)
     mlp.fit(x_train, t_train)
-    print(mlp.score(x_test,t_test))
+    print(mlp.score(x_test, t_test))
 
     """
     Random search
@@ -131,3 +130,8 @@ def nSpiralExperiment1():
     gs_results = gs_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
     gs_results.save_all_results(results_path, experiment_title, dgen.model,
                                 dgen.train_size, noise, mlp_for_gs.score(x_test, t_test))
+
+
+if __name__ == '__main__':
+
+    nSpiralExperiment1()
