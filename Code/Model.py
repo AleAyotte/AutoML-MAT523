@@ -599,15 +599,16 @@ class Cnn(Model, torch.nn.Module):
         if type(m) == torch.nn.Linear:
             torch.nn.init.xavier_normal_(m.weight)
             torch.nn.init.zeros_(m.weight)
+
         elif type(m) == torch.nn.Conv2d:
 
             if self.activation != "swish" and self.activation != "mish":
                 torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
             else:
                 torch.nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
-
             if not(m.bias is None):
                 torch.nn.init.zeros_(m.bias)
+
         elif type(m) == torch.nn.BatchNorm2d:
             torch.nn.init.ones_(m.weight)
             torch.nn.init.zeros_(m.bias)
@@ -802,148 +803,6 @@ class CnnVanilla(Cnn):
                  num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
-        Class that generate a convolutional neural network using the Pytorch library
-
-        :param num_classes: Number of class
-        :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
-                           [i, 0]: Number of output channels of the ith layer
-                           [i, 1]: Square convolution dimension of the ith layer
-                           [i, 2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
-        :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
-                          [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
-                          [i, 1]: Pooling kernel height
-                          [i, 2]: Pooling kernel width
-        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
-        :param input_dim: Image input dimensions [height, width, deep]
-        :param activation: Activation function (default: relu)
-        :param lr: The initial learning rate used with the Adam Optimizer
-        :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
-        :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
-        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
-        :param b_size: Batch size as integer (default: 15)
-        :param num_epoch: Number of epoch to do during the training (default: 10)
-        :param valid_size: Portion of the data that will be used for validation.
-        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
-        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
-                               before early stopping
-        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
-        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
-                             seem to converge.
-        """
-
-        Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
-                     b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
-                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
-
-        # We need a special type of list to ensure that torch detect every layer and node of the neural net
-        self.cnn_layer = torch.nn.ModuleList()
-        self.fc_layer = torch.nn.ModuleList()
-        self.num_flat_features = 0
-        self.out_layer = None
-        self.pool = pool_list
-
-        # Default image dimension. Height: 28, width: 28 and deep: 1 (MNIST)
-        if input_dim is None:
-            input_dim = np.array([28, 28, 1])
-
-        # We build the model
-        self.build_layer(conv_layer, pool_list, fc_nodes, input_dim)
-
-    def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim):
-
-        """
-        Create the model architecture
-
-        :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
-                           [i, 0]: Number of output channels of the ith layer
-                           [i, 1]: Square convolution dimension of the ith layer
-                           [i, 2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
-        :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
-                          [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
-                          [i, 1]: Pooling kernel height
-                          [i, 2]: Pooling kernel width
-        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
-        :param input_dim: Image input dimensions [height, width, deep]
-        :return:
-        """
-
-        # ------------------------------------------------------------------------------------------
-        #                                   CONVOLUTIONAL PART
-        # ------------------------------------------------------------------------------------------
-        # First convolutional layer
-        self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv_layer[0, 0], conv_layer[0, 1],
-                                              padding=self.pad_size(conv_layer[0, 1], conv_layer[0, 2])
-                                              ))
-        # Activation function
-        self.cnn_layer.append(self.get_activation_function())
-
-        # Pooling layer
-        if pool_list[0, 0] != 0:
-            self.cnn_layer.append(self.build_pooling_layer(pool_list[0]))
-
-        # We need to compute the input size of the fully connected layer
-        size = self.conv_out_size(input_dim[0:2], conv_layer[0, 1], conv_layer[0, 2], pool_list[0])
-
-        # All others convolutional layers
-        for it in range(1, len(conv_layer)):
-            self.cnn_layer.append(torch.nn.Conv2d(conv_layer[it - 1, 0], conv_layer[it, 0], conv_layer[it, 1],
-                                                  padding=self.pad_size(conv_layer[it, 1], conv_layer[it, 2])
-                                                  ))
-            self.cnn_layer.append(self.get_activation_function())
-
-            if pool_list[it, 0] != 0:
-                self.cnn_layer.append(self.build_pooling_layer(pool_list[it]))
-
-            # Update the output size
-            size = self.conv_out_size(size, conv_layer[it, 1], conv_layer[it, 2], pool_list[it])
-
-        # ------------------------------------------------------------------------------------------
-        #                                   FULLY CONNECTED PART
-        # ------------------------------------------------------------------------------------------
-        # Compute the fully connected input layer size
-        self.num_flat_features = size[0] * size[1] * conv_layer[-1, 0]
-
-        # First fully connected layer
-        self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
-        self.fc_layer.append(self.get_activation_function())
-        self.fc_layer.append(self.drop)
-
-        # All others hidden layers
-        for it in range(1, len(fc_nodes)):
-            self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
-            self.fc_layer.append(self.get_activation_function())
-            self.fc_layer.append(self.drop)
-
-        # Output layer
-        self.out_layer = torch.nn.Linear(fc_nodes[-1], self.classes)
-
-    def forward(self, x):
-
-        """
-        Define the forward pass of the neural network
-
-        :param x: Input tensor of size BxD where B is the Batch size and D is the features dimension
-        :return: Output tensor of size num_class x 1.
-        """
-
-        for i, l in enumerate(self.cnn_layer):
-            x = self.cnn_layer[i](x) + l(x)
-
-        x = x.view(-1, self.num_flat_features)
-
-        for i, l in enumerate(self.fc_layer):
-            x = self.fc_layer[i](x) + l(x)
-
-        x = self.soft(self.out_layer(x))
-        return x
-
-
-class FastCnnVanilla(Cnn):
-    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
-                 alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
-                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
-
-        """
         Class that generate a convolutional neural network using the sequential module of the Pytorch library. Should be
         faster than CnnVanilla sub class. (~15-20% faster)
 
@@ -1113,8 +972,8 @@ class ResNet(Cnn):
                      lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
-        self.cnn_layer = torch.nn.ModuleList()
-        self.fc_layer = torch.nn.ModuleList()
+        self.conv = None
+        self.fc = None
         self.num_flat_features = 0
         self.out_layer = None
 
@@ -1149,12 +1008,12 @@ class ResNet(Cnn):
         #                                   CONVOLUTIONAL PART
         # ------------------------------------------------------------------------------------------
         # First convolutional layer
-        self.cnn_layer.append(torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2])))
-        self.cnn_layer.append(torch.nn.BatchNorm2d(conv[0]))
-        self.cnn_layer.append(self.get_activation_function())
+        conv_list = [torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2])),
+                     torch.nn.BatchNorm2d(conv[0]),
+                     self.get_activation_function()]
 
         if pool1[0] != 0:
-            self.cnn_layer.append(self.build_pooling_layer(pool1))
+            conv_list.extend([self.build_pooling_layer(pool1)])
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(input_dim[0:2], conv[1], conv[2], pool1)
@@ -1166,48 +1025,54 @@ class ResNet(Cnn):
         f_in = conv[0]
 
         for it in range(len(res_config)):
-            self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
-                                                   self.activation, twice=True, subsample=True))
+            conv_list.extend([Module.ResModule(f_in, res_config[it, 1], self.activation,
+                                               twice=(it != 0), subsample=(it != 0))])
 
             # Update
-            f_in *= 2
-            print("size = {}".format(size))
-            size = size / 2
+            if it > 0:
+                f_in *= 2
+                size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
-                self.cnn_layer.append(Module.ResModule(f_in, res_config[it, 1],
-                                                       self.activation, twice=False, subsample=False))
+                conv_list.extend([Module.ResModule(f_in, res_config[it, 1], self.activation,
+                                                   twice=False, subsample=False)])
 
         if pool2[0] != 0:
-            self.cnn_layer.append(self.build_pooling_layer(pool2))
+            conv_list.extend([self.build_pooling_layer(pool2)])
 
         # We need to compute the input size of the fully connected layer
         size = self.conv_out_size(size, res_config[-1, 1], 2, pool2)
+
+        self.conv = torch.nn.Sequential(*conv_list)
 
         # ------------------------------------------------------------------------------------------
         #                                   FULLY CONNECTED PART
         # ------------------------------------------------------------------------------------------
         # Compute the fully connected input layer size
         self.num_flat_features = size[0] * size[1] * f_in
+        fc_list = []
 
         if fc_nodes is None:
             num_last_nodes = self.num_flat_features
+
         else:
             # First fully connected layer
-            self.fc_layer.append(torch.nn.Linear(self.num_flat_features, fc_nodes[0]))
-            self.fc_layer.append(self.get_activation_function())
-            self.fc_layer.append(self.drop)
+            fc_list.extend([torch.nn.Linear(self.num_flat_features, fc_nodes[0]),
+                            self.get_activation_function(),
+                            self.drop])
 
             # All others hidden layers
             for it in range(1, len(fc_nodes)):
-                self.fc_layer.append(torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]))
-                self.fc_layer.append(self.get_activation_function())
-                self.fc_layer.append(self.drop)
+                fc_list.extend([torch.nn.Linear(fc_nodes[it - 1], fc_nodes[it]),
+                                self.get_activation_function(),
+                                self.drop])
 
             num_last_nodes = fc_nodes[-1]
 
         # Output layer
-        self.out_layer = torch.nn.Linear(num_last_nodes, self.classes)
+        fc_list.extend([torch.nn.Linear(num_last_nodes, self.classes), self.soft])
+
+        self.fc = torch.nn.Sequential(*fc_list)
 
     def forward(self, x):
 
@@ -1218,13 +1083,6 @@ class ResNet(Cnn):
         :return: Output tensor of size num_class x 1.
         """
 
-        for i, l in enumerate(self.cnn_layer):
-            x = self.cnn_layer[i](x) + l(x)
-
-        x = x.view(-1, self.num_flat_features)
-
-        for i, l in enumerate(self.fc_layer):
-            x = self.fc_layer[i](x) + l(x)
-
-        x = self.soft(self.out_layer(x))
-        return x
+        conv_out = self.conv(x)
+        output = self.fc(conv_out.view(-1, self.num_flat_features))
+        return output
