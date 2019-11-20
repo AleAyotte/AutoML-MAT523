@@ -59,7 +59,7 @@ def nSpiralExperiment1():
     # We execute the tuning and save the results
     rs_results = rs_tuner.tune(x_train, t_train, n_evals=nb_evals, nb_cross_validation=nb_cross_validation)
     rs_results.save_all_results(results_path, experiment_title, dgen.model,
-                                dgen.train_size, noise, mlp_for_rs.score(x_test, t_test))
+                                dgen.train_size, mlp_for_rs.score(x_test, t_test), noise)
 
     """
     TPE (Tree-structured Parzen Estimator )
@@ -75,7 +75,7 @@ def nSpiralExperiment1():
     # We execute the tuning and save the results
     tpe_results = tpe_tuner.tune(x_train, t_train, n_evals=nb_evals, nb_cross_validation=nb_cross_validation)
     tpe_results.save_all_results(results_path, experiment_title, dgen.model,
-                                 dgen.train_size, noise, mlp_for_tpe.score(x_test, t_test))
+                                 dgen.train_size, mlp_for_tpe.score(x_test, t_test), noise)
 
     """
     Standard GP with EI acquisition function
@@ -94,7 +94,7 @@ def nSpiralExperiment1():
 
     # We save the results
     GP_results.save_all_results(results_path, experiment_title, dgen.model,
-                                dgen.train_size, noise, mlp_for_GP.score(x_test, t_test))
+                                dgen.train_size,  mlp_for_GP.score(x_test, t_test), noise)
 
     """
     Standard GP with MPI acquisition function
@@ -113,7 +113,7 @@ def nSpiralExperiment1():
 
     # We save the results
     GP_results2.save_all_results(results_path, experiment_title, dgen.model,
-                                 dgen.train_size, noise, mlp_for_GP2.score(x_test, t_test))
+                                 dgen.train_size, mlp_for_GP2.score(x_test, t_test), noise)
 
     """
     Grid search
@@ -129,7 +129,7 @@ def nSpiralExperiment1():
     # We execute the tuning and save the results
     gs_results = gs_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
     gs_results.save_all_results(results_path, experiment_title, dgen.model,
-                                dgen.train_size, noise, mlp_for_gs.score(x_test, t_test))
+                                dgen.train_size, mlp_for_gs.score(x_test, t_test), noise)
 
 
 if __name__ == '__main__':
