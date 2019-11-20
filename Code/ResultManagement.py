@@ -25,6 +25,7 @@ class ExperimentAnalyst:
 
         self.model_name = model_name
         self.tuning_method = tuning_method
+        self.method_type = None               # Only used when tuning method is a gaussian process
         self.nbr_of_cross_validation = 1
         self.validation_size = 0.2
         self.hyperparameters_history = []
@@ -80,24 +81,33 @@ class ExperimentAnalyst:
 
         return plt
 
-    def save_all_results(self, experiment_title, dataset_name, training_size, noise=None):
+    def save_all_results(self, path, experiment_title, dataset_name, training_size, noise, test_accuracy):
 
         """
         Saves all results saved by the ExperimentAnalyst
 
-        :param experiment_title: name of the folder that will be created for the experiment
+        :param path: string representing the path that will contain the folder of the file
+        :param experiment_title: string with title of the experiment
+        :param dataset_name: string with the name of the dataset
+        :param training_size: int indicating number of elements in training data set
+        :param noise: noise added to the data set
+        :param test_accuracy: accuracy obtained with test data set
         """
-        # We get the directory two level upper and insert the folder for our results
-        path = os.path.join(os.pardir, os.getcwd())
-        path = os.path.join(path, os.pardir, "Results")
+
+        # We initialize a list with all the folder needed to save the results
+        folders_name = [experiment_title, self.tuning_method]
+
+        # We adjust add an element to the list if there's a method type
+        if self.method_type is not None:
+            folders_name.append(self.method_type)
 
         # We create all folder expected in the folder Results (if they don't already exist)
-        for folder_name in [self.tuning_method, self.model_name, dataset_name, experiment_title]:
+        for folder_name in [experiment_title, self.tuning_method]:
             path = os.path.join(path, folder_name.upper(), '')
             self.create_folder(path)
 
         # We save all important data for the ExperimentAnalyst in the path concerned
-        self.__save_tuning_summary(path, experiment_title, dataset_name, training_size, noise)
+        self.__save_tuning_summary(path, experiment_title, dataset_name, training_size, noise, test_accuracy)
         self.__save_accuracy_history(path)
         self.__save_accuracy_history(path, best_accuracy=True)
         self.__save_hyperparameters(path)
@@ -135,7 +145,7 @@ class ExperimentAnalyst:
 
         self.write_csv(path, 'hyperparameters_hist', self.hyperparameters_history)
 
-    def __save_tuning_summary(self, path, experiment_title, dataset_name, traing_size, noise):
+    def __save_tuning_summary(self, path, experiment_title, dataset_name, training_size, noise, test_accuracy):
 
         """
         Saves a summary of the tuning results in a .txt file
@@ -143,8 +153,9 @@ class ExperimentAnalyst:
         :param path: string representing the path that will contain the file
         :param experiment_title: string with title of the experiment
         :param dataset_name: string with the name of the dataset
-        :param traing_size: int indicating number of elements in training data set
+        :param training_size: int indicating number of elements in training data set
         :param noise: noise added to the data set
+        :param test_accuracy: accuracy obtained with test data set
         """
 
         # We open the file
@@ -156,14 +167,15 @@ class ExperimentAnalyst:
         f.write("Nbr. of cross validation done in each iteration : %g \n\n" % self.nbr_of_cross_validation)
         f.write("Validation size in cross validation : %g \n\n" % self.validation_size)
         f.write("Dataset name : %s \n\n" % dataset_name)
-        f.write("Size of training set : %g \n\n" % traing_size)
+        f.write("Size of training set : %g \n\n" % training_size)
 
         if noise is not None:
             f.write("Noise : %g \n\n" % noise)
 
-        f.write("Number of iterations: %g \n\n" % len(self.accuracy_history))
-        f.write("Best accuracy obtained: %g \n\n" % self.actual_best_accuracy)
+        f.write("Number of iterations : %g \n\n" % len(self.accuracy_history))
+        f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
         f.write("Best hyper-parameters found : %s" % str(self.best_hyperparameters))
+        f.write("Accuracy with test data set : %g" % test_accuracy)
 
         # We close the file
         f.close()
