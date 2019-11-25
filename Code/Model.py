@@ -930,7 +930,7 @@ class CnnVanilla(Cnn):
 
 
 class ResNet(Cnn):
-    def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', version=1,
+    def __init__(self, num_classes, conv_config, res_config, pool1, pool2, fc_config, activation='relu', version=1,
                  input_dim=None, lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10,
                  tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
@@ -939,7 +939,7 @@ class ResNet(Cnn):
         Image Recogniton" (Ref 1).
 
         :param num_classes: Number of classes
-        :param conv: A tuple that represent the parameters of the first convolutional layer.
+        :param conv_config: A tuple that represent the parameters of the first convolutional layer.
                      [0]: Number of output channels (features maps)
                      [1]: Kernel size: (Example: 3.  For a 3x3 kernel)
                      [2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
@@ -951,7 +951,7 @@ class ResNet(Cnn):
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
                       [1]: Pooling kernel height
                       [2]: Pooling kernel width
-        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param fc_config: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: relu)
         :param version: Which version of the ResNet should be use. V1: Post activation, V2: Pre activation
@@ -975,7 +975,16 @@ class ResNet(Cnn):
                      lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
         # Hyper-parameters specifics to the ResNet
-        self.hparams['version'] = version
+        if version == 1 or version == 2:
+            self.hparams['version'] = version
+        else:
+            raise Exception("Version parameter set to {}. Choose 1 or 2".format(version))
+
+        # We need to save the model configuration parameters to rebuild it during the hyper-parameters research
+        self.conv_config = conv_config
+        self.res_config = res_config
+        self.pool = [pool1, pool2]
+        self.fc_config = fc_config
 
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.conv = None
@@ -985,19 +994,13 @@ class ResNet(Cnn):
 
         # Default image dimension. Height: 32, width: 32 and deep: 3 (CIFAR10)
         if input_dim is None:
-            input_dim = np.array([32, 32, 3])
-
-        # We select the right resnet module according to the given version
-        if version == 1:
-            res_module = Module.ResModuleV1
-        elif version == 2:
-            res_module = Module.ResModuleV2
+            self.input_dim = np.array([32, 32, 3])
         else:
-            raise Exception("Version paramater set to {}. Choose 1 or 2".format(version))
+            self.input_dim = input_dim
 
-        self.build_layer(conv, res_config, res_module, pool1, pool2, fc_nodes, input_dim)
+        self.build_layer(self.conv_config, self.res_config, self.pool[0], self.pool[1], self.fc_config, self.input_dim)
 
-    def build_layer(self, conv, res_config, res_module, pool1, pool2, fc_nodes, input_dim):
+    def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, input_dim):
 
         """
         Create the model architecture
@@ -1009,7 +1012,6 @@ class ResNet(Cnn):
         :param res_config:A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
                           [i, 0]: Number of residual modules
                           [i, 1]: Kernel size of the convolutional layers
-        :param res_module: The residual module used to create the ResNet block.
         :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
         :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
@@ -1037,13 +1039,21 @@ class ResNet(Cnn):
         #                                      RESIDUAL PART
         # ------------------------------------------------------------------------------------------
 
+        # We select the right resnet module according to the given version
+        if self.hparams['version'] == 1:
+            res_module = Module.ResModuleV1
+        else:
+            res_module = Module.ResModuleV2
+
+        # Number of features that enter in the first residual module
         f_in = conv[0]
 
+        # Construct the chain of residual module
         for it in range(len(res_config)):
             conv_list.extend([res_module(f_in, res_config[it, 1], self.activation,
                                          twice=(it != 0), subsample=(it != 0))])
 
-            # Update
+            # Update features maps information
             if it > 0:
                 f_in *= 2
                 size = size / 2
