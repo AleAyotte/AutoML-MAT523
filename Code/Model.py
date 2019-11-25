@@ -317,8 +317,8 @@ class MLP(Model):
         :param beta_1: Exponential decay rate for estimates of first moment vector in adam, should be in [0, 1)
         :param beta_2: Exponential decay rate for estimates of second moment vector in adam, should be in [0, 1)
         """
-        hidden_layer_sizes = [layers_size]*hidden_layers_number
-        hidden_layer_sizes = tuple(hidden_layer_sizes)
+
+        hidden_layer_sizes = tuple([layers_size]*hidden_layers_number)
 
         self.model_frame = nn.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
                                             alpha=alpha, batch_size=batch_size, learning_rate=learning_rate,
@@ -421,6 +421,15 @@ class MLP(Model):
 
         :param hyperparams: Dictionary of hyper-parameters to change
         """
+
+        # We compute the hidden layer sizes parameter to fit with sklearn MLP while removing hln and ls
+        # hyper-parameters from the dictionary
+        hidden_layers_number = hyperparams.pop('hidden_layers_number', self.HP_space['hidden_layers_number'].value)
+        layers_size = hyperparams.pop('layers_size', self.HP_space['layers_size'].value)
+        hidden_layer_sizes = tuple([layers_size]*hidden_layers_number)
+
+        # We add hidden_layer_sizes to the dict
+        hyperparams['hidden_layer_sizes'] = hidden_layer_sizes
 
         self.model_frame.set_params(**hyperparams)
 
