@@ -1000,6 +1000,25 @@ class ResNet(Cnn):
 
         self.build_layer(self.conv_config, self.res_config, self.pool[0], self.pool[1], self.fc_config, self.input_dim)
 
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Function that set the new hyper-parameters and rebuild the model after the update
+
+        :param hyperparams: Dictionary specifying hyper-parameters to change.
+        """
+
+        for hp in hyperparams:
+            if hp in self.hparams:
+                self.hparams[hp] = hyperparams[hp]
+            else:
+                raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
+
+        self.conv = self.fc = self.out_layer = None
+        self.num_flat_features = 0
+
+        self.build_layer(self.conv_config, self.res_config, self.pool[0], self.pool[1], self.fc_config, self.input_dim)
+
     def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, input_dim):
 
         """
