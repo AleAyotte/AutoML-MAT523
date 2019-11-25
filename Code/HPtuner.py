@@ -7,8 +7,12 @@
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
+import socket
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
+import hpbandster.core.nameserver as hpns
+import hpbandster.core.result as hpres
+from hpbandster.optimizers import BOHB
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe
 from Model import HPtype
@@ -267,6 +271,10 @@ class HPtuner:
 
             return GPyOptSearchSpace(model)
 
+        elif method == 'hyperband' or method == 'BOHB':
+
+            return HpBandSterSearchSpace(model)
+
         else:
             raise NotImplementedError
 
@@ -283,7 +291,7 @@ class HPtuner:
         :return: A specific loss function for our tuner
         """
 
-        if self.method in ['grid_search', 'random_search', 'tpe']:
+        if self.method in ['grid_search', 'random_search', 'tpe', 'hyperband', 'BOHB']:
 
             def loss(hyperparams):
                 """
