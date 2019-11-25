@@ -17,7 +17,7 @@ from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
 
 
-method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
+method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'BOHB']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
 acquistions_type = ['EI', 'MPI']
@@ -630,6 +630,9 @@ class ContinuousDomain(Domain):
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
             return tuple([self.lb, self.ub])
 
+        elif tuner_method == 'hyperband' or tuner_method == 'BOHB':
+            return [self.lb, self.ub]
+
 
 class DiscreteDomain(Domain):
 
@@ -656,7 +659,7 @@ class DiscreteDomain(Domain):
         :return: Set of values compatible with method used by HPtuner
         """
 
-        if tuner_method == 'grid_search':
+        if tuner_method in ['grid_search', 'hyperband', 'BOHB']:
             return self.values
 
         elif tuner_method == 'random_search' or tuner_method == 'tpe':
