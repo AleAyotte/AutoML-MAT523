@@ -35,7 +35,7 @@ def nSpiralExperiment1():
 
     # We initialize an MLP with default hyper-parameters and 3 hidden layers of 20 neurons to classify our data
     # and test its performance on both training and test data sets
-    mlp = mod.MLP((20, 20, 20, 20), max_iter=1000)
+    mlp = mod.MLP(hidden_layers_number=4, layers_size=20, max_iter=1000)
     mlp.fit(x_train, t_train)
     print(mlp.score(x_test, t_test))
 
