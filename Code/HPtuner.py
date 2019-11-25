@@ -585,7 +585,22 @@ class HpBandSterSearchSpace(SearchSpace):
 
         super(HpBandSterSearchSpace, self).__init__(space)
 
+    def reformat_for_tuning(self):
 
+        """
+        Converts the dictionnary of CSH object to a proper ConfigurationSpace accepted by HpBandSter.
+        """
+
+        # Initialization of configuration space
+        cs = CS.ConfigurationSpace()
+
+        # We extract CSH object from the dictionnary and put it in a list
+        if len(self.space) != 0:
+            self.space = list(self.space.values())
+            self.space = cs.add_hyperparameters(self.space)
+
+        else:
+            raise Exception('Search space has not been modified yet, no tuning can be done.')
 
 
 @unique
