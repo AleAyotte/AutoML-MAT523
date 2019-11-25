@@ -290,9 +290,9 @@ class SVM(Model):
 
 class MLP(Model):
 
-    def __init__(self, hidden_layer_sizes=(100, ), activation='relu', solver='adam', alpha=0.0001, batch_size='auto',
-                 learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200, momentum=0.9,
-                 beta_1=0.9, beta_2=0.999):
+    def __init__(self, hidden_layers_number=1, layers_size=100, activation='relu', solver='adam', alpha=0.0001,
+                 batch_size='auto', learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200,
+                 momentum=0.9, beta_1=0.9, beta_2=0.999):
 
         """
         Class that generates a Multi-layer Perceptron classifier.
@@ -303,7 +303,8 @@ class MLP(Model):
         For more information take a look at :
         https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html#sklearn.neural_network.MLPClassifier
 
-        :param hidden_layer_sizes: The ith element represents the number of neurons in the ith hidden layer
+        :param hidden_layers_number: Number of hidden layers in the network
+        :param layers_size: Number of neurons per layer (equal for every layer)
         :param activation: Activation function for the hidden layer {‘identity’, ‘logistic’, ‘tanh’, ‘relu’}
         :param solver: The solver for weight optimization {‘lbfgs’, ‘sgd’, ‘adam’}
         :param alpha: L2 penalty (regularization term) parameter
@@ -316,6 +317,8 @@ class MLP(Model):
         :param beta_1: Exponential decay rate for estimates of first moment vector in adam, should be in [0, 1)
         :param beta_2: Exponential decay rate for estimates of second moment vector in adam, should be in [0, 1)
         """
+        hidden_layer_sizes = [layers_size]*hidden_layers_number
+        hidden_layer_sizes = tuple(hidden_layer_sizes)
 
         self.model_frame = nn.MLPClassifier(hidden_layer_sizes=hidden_layer_sizes, activation=activation, solver=solver,
                                             alpha=alpha, batch_size=batch_size, learning_rate=learning_rate,
@@ -324,7 +327,8 @@ class MLP(Model):
 
         if solver == 'adam':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                {'hidden_layers_number': Hyperparameter('hidden_layers_number', HPtype.integer, [hidden_layers_number]),
+                 'layers_size': Hyperparameter('layers_size', HPtype.integer, [layers_size]),
                  'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
                  'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
                  'alpha': Hyperparameter('alpha', HPtype.real, [alpha]),
@@ -335,7 +339,8 @@ class MLP(Model):
 
         elif solver == 'sgd':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                {'hidden_layers_number': Hyperparameter('hidden_layers_number', HPtype.integer, [hidden_layers_number]),
+                 'layers_size': Hyperparameter('layers_size', HPtype.integer, [layers_size]),
                  'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
                  'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
                  'alpha': Hyperparameter('alpha', HPtype.real, [alpha]),
@@ -347,7 +352,8 @@ class MLP(Model):
 
         elif solver == 'lbfgs':
             super(MLP, self).__init__(
-                {'hidden_layer_sizes': Hyperparameter('hidden_layer_sizes', HPtype.categorical, [hidden_layer_sizes]),
+                {'hidden_layers_number': Hyperparameter('hidden_layers_number', HPtype.integer, [hidden_layers_number]),
+                 'layers_size': Hyperparameter('layers_size', HPtype.integer, [layers_size]),
                  'activation': Hyperparameter('activation', HPtype.categorical, [activation]),
                  'solver': Hyperparameter('solver', HPtype.categorical, [solver]),
                  'alpha': Hyperparameter('alpha', HPtype.real, [alpha])})
