@@ -20,7 +20,7 @@ import torch.nn.functional as F
 import Model
 
 
-class ResModule(torch.nn.Module):
+class ResModuleV1(torch.nn.Module):
     def __init__(self, fmap_in, kernel, activation, bias=False, twice=False, subsample=False):
 
         """

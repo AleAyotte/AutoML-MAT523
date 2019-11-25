@@ -675,7 +675,7 @@ class Cnn(Model, torch.nn.Module):
 
         # Indicator for early stopping
         best_accuracy = 0
-        best_epoch = 0
+        best_epoch = -1
         num_epoch_no_change = 0
         lr_decay_step = 0
         learning_rate = self.hparams["lr"]
@@ -720,7 +720,7 @@ class Cnn(Model, torch.nn.Module):
                 end = time.time()
                 print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
                       " best accuracy: {:.2f}%, best epoch {:d}:".format
-                      (epoch + 1, end - begin, sum_loss / it, current_accuracy*100, best_accuracy*100, best_epoch))
+                      (epoch + 1, end - begin, sum_loss / it, current_accuracy*100, best_accuracy*100, best_epoch + 1))
                 begin = time.time()
 
             # ------------------------------------------------------------------------------------------
@@ -728,7 +728,7 @@ class Cnn(Model, torch.nn.Module):
             # ------------------------------------------------------------------------------------------
             if current_accuracy - best_accuracy >= self.tol:
                 best_accuracy = current_accuracy
-                best_epoch = best_epoch
+                best_epoch = epoch
                 num_epoch_no_change = 0
 
             elif num_epoch_no_change < self.num_stop_epoch - 1:
@@ -930,9 +930,9 @@ class CnnVanilla(Cnn):
 
 
 class ResNet(Cnn):
-    def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
-                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
-                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
+    def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', version=1,
+                 input_dim=None, lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10,
+                 tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
@@ -954,6 +954,7 @@ class ResNet(Cnn):
         :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: relu)
+        :param version: Which version of the ResNet should be use. V1: Post activation, V2: Pre activation
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
@@ -973,6 +974,9 @@ class ResNet(Cnn):
                      b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
                      lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
+        # Hyper-parameters specifics to the ResNet
+        self.hparams['version'] = version
+
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.conv = None
         self.fc = None
@@ -983,9 +987,17 @@ class ResNet(Cnn):
         if input_dim is None:
             input_dim = np.array([32, 32, 3])
 
-        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, input_dim)
+        # We select the right resnet module according to the given version
+        if version == 1:
+            res_module = Module.ResModuleV1
+        elif version == 2:
+            res_module = Module.ResModuleV2
+        else:
+            raise Exception("Version paramater set to {}. Choose 1 or 2".format(version))
 
-    def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, input_dim):
+        self.build_layer(conv, res_config, res_module, pool1, pool2, fc_nodes, input_dim)
+
+    def build_layer(self, conv, res_config, res_module, pool1, pool2, fc_nodes, input_dim):
 
         """
         Create the model architecture
@@ -997,6 +1009,7 @@ class ResNet(Cnn):
         :param res_config:A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
                           [i, 0]: Number of residual modules
                           [i, 1]: Kernel size of the convolutional layers
+        :param res_module: The residual module used to create the ResNet block.
         :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
         :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
@@ -1027,8 +1040,8 @@ class ResNet(Cnn):
         f_in = conv[0]
 
         for it in range(len(res_config)):
-            conv_list.extend([Module.ResModule(f_in, res_config[it, 1], self.activation,
-                                               twice=(it != 0), subsample=(it != 0))])
+            conv_list.extend([res_module(f_in, res_config[it, 1], self.activation,
+                                         twice=(it != 0), subsample=(it != 0))])
 
             # Update
             if it > 0:
@@ -1036,8 +1049,8 @@ class ResNet(Cnn):
                 size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
-                conv_list.extend([Module.ResModule(f_in, res_config[it, 1], self.activation,
-                                                   twice=False, subsample=False)])
+                conv_list.extend([res_module(f_in, res_config[it, 1], self.activation,
+                                             twice=False, subsample=False)])
 
         if pool2[0] != 0:
             conv_list.extend([self.build_pooling_layer(pool2)])
