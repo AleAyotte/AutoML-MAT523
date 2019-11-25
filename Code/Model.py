@@ -602,10 +602,10 @@ class Cnn(Model, torch.nn.Module):
 
         elif type(m) == torch.nn.Conv2d:
 
-            if self.activation != "swish" and self.activation != "mish":
+            if self.activation == "relu" and self.activation == "sigmoide":
                 torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
             else:
-                torch.nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+                torch.nn.init.kaiming_normal_(m.weight)
             if not(m.bias is None):
                 torch.nn.init.zeros_(m.bias)
 
@@ -719,7 +719,7 @@ class Cnn(Model, torch.nn.Module):
             if verbose:
                 end = time.time()
                 print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
-                      "best accuracy: {:.2f}%, best epoch {:d}:".format
+                      " best accuracy: {:.2f}%, best epoch {:d}:".format
                       (epoch + 1, end - begin, sum_loss / it, current_accuracy*100, best_accuracy*100, best_epoch))
                 begin = time.time()
 
