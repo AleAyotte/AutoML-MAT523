@@ -127,3 +127,4 @@ gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 10
 gs_results = gs_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
 gs_results.save_all_results(results_path, experiment_title, dgen.model,
                             dgen.train_size, noise, mlp_for_gs.score(x_test, t_test))
+
