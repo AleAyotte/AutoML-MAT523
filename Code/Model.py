@@ -675,6 +675,7 @@ class Cnn(Model, torch.nn.Module):
 
         # Indicator for early stopping
         best_accuracy = 0
+        best_epoch = 0
         num_epoch_no_change = 0
         lr_decay_step = 0
         learning_rate = self.hparams["lr"]
@@ -717,8 +718,9 @@ class Cnn(Model, torch.nn.Module):
 
             if verbose:
                 end = time.time()
-                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}, validation_accuracy: {}".format(
-                    epoch + 1, end - begin, sum_loss / it, current_accuracy))
+                print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
+                      "best accuracy: {:.2f}%, best epoch {:d}:".format
+                      (epoch + 1, end - begin, sum_loss / it, current_accuracy*100, best_accuracy*100, best_epoch))
                 begin = time.time()
 
             # ------------------------------------------------------------------------------------------
@@ -726,6 +728,7 @@ class Cnn(Model, torch.nn.Module):
             # ------------------------------------------------------------------------------------------
             if current_accuracy - best_accuracy >= self.tol:
                 best_accuracy = current_accuracy
+                best_epoch = best_epoch
                 num_epoch_no_change = 0
 
             elif num_epoch_no_change < self.num_stop_epoch - 1:
@@ -803,8 +806,7 @@ class CnnVanilla(Cnn):
                  num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
-        Class that generate a convolutional neural network using the sequential module of the Pytorch library. Should be
-        faster than CnnVanilla sub class. (~15-20% faster)
+        Class that generate a convolutional neural network using the sequential module of the Pytorch library.
 
         :param num_classes: Number of class
         :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
