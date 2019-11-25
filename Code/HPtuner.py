@@ -7,6 +7,8 @@
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
+import ConfigSpace as CS
+import ConfigSpace.hyperparameters as CSH
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe
 from Model import HPtype
@@ -91,7 +93,7 @@ class HPtuner:
         if domain.type.value < self.model.HP_space[hyperparameter].type.value:
             raise Exception('You cannot attribute a continuous search space to a non real hyper-parameter')
 
-        # If the new domain is continuous and the current domain will be changed cause
+        # If the new domain is continuous the current domain will be changed cause
         # the default domain is discrete (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
         if domain.type == DomainType.continuous:
             self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
@@ -569,6 +571,23 @@ class GPyOptSearchSpace(SearchSpace):
         self.space[key]['domain'] = value
 
 
+class HpBandSterSearchSpace(SearchSpace):
+
+    def __init__(self, model):
+
+        """
+        Class that defines a compatible search space with HpBandSter package hyper-parameter optimization algorithm
+
+        :param model: Available model from Model.py
+        """
+
+        space = {}
+
+        super(HpBandSterSearchSpace, self).__init__(space)
+
+
+
+
 @unique
 class DomainType(Enum):
 
@@ -631,7 +650,7 @@ class ContinuousDomain(Domain):
             return tuple([self.lb, self.ub])
 
         elif tuner_method == 'hyperband' or tuner_method == 'BOHB':
-            return [self.lb, self.ub]
+            return CSH.UniformFloatHyperparameter(label, lower=self.lb, upper=self.ub, log=False)
 
 
 class DiscreteDomain(Domain):
@@ -659,7 +678,7 @@ class DiscreteDomain(Domain):
         :return: Set of values compatible with method used by HPtuner
         """
 
-        if tuner_method in ['grid_search', 'hyperband', 'BOHB']:
+        if tuner_method == 'grid_search':
             return self.values
 
         elif tuner_method == 'random_search' or tuner_method == 'tpe':
@@ -667,3 +686,6 @@ class DiscreteDomain(Domain):
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
             return tuple(self.values)
+
+        elif tuner_method == 'hyperband' or tuner_method == 'BOHB':
+            return CSH.CategoricalHyperparameter(label, choices=self.values)
