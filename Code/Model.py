@@ -422,16 +422,19 @@ class MLP(Model):
         :param hyperparams: Dictionary of hyper-parameters to change
         """
 
+        # We do a copy of the dict to avoid changing the original dict
+        hps = hyperparams.copy()
+
         # We compute the hidden layer sizes parameter to fit with sklearn MLP while removing hln and ls
         # hyper-parameters from the dictionary
-        hidden_layers_number = hyperparams.pop('hidden_layers_number', self.HP_space['hidden_layers_number'].value)
-        layers_size = hyperparams.pop('layers_size', self.HP_space['layers_size'].value)
+        hidden_layers_number = hps.pop('hidden_layers_number', self.HP_space['hidden_layers_number'].value)
+        layers_size = hps.pop('layers_size', self.HP_space['layers_size'].value)
         hidden_layer_sizes = tuple([layers_size]*hidden_layers_number)
 
         # We add hidden_layer_sizes to the dict
-        hyperparams['hidden_layer_sizes'] = hidden_layer_sizes
+        hps['hidden_layer_sizes'] = hidden_layer_sizes
 
-        self.model_frame.set_params(**hyperparams)
+        self.model_frame.set_params(**hps)
 
 
 class Cnn(Model, torch.nn.Module):
