@@ -81,7 +81,7 @@ class ExperimentAnalyst:
 
         return plt
 
-    def save_all_results(self, path, experiment_title, dataset_name, training_size, noise, test_accuracy):
+    def save_all_results(self, path, experiment_title, dataset_name, training_size, test_accuracy, noise=None):
 
         """
         Saves all results saved by the ExperimentAnalyst
