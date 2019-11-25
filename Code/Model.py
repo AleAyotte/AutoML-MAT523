@@ -3,7 +3,7 @@
     @Author:            Nicolas Raymond
                         Alexandre Ayotte
     @Creation Date:     30/09/2019
-    @Last modification: 16/11/2019
+    @Last modification: 25/11/2019
 
     @Reference: 1)  K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In CVPR, 2016.
 
@@ -823,7 +823,7 @@ class CnnVanilla(Cnn):
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
-        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         :param valid_size: Portion of the data that will be used for validation.
@@ -958,7 +958,7 @@ class ResNet(Cnn):
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
-        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.0)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         :param valid_size: Portion of the data that will be used for validation.
@@ -1008,11 +1008,7 @@ class ResNet(Cnn):
         :param hyperparams: Dictionary specifying hyper-parameters to change.
         """
 
-        for hp in hyperparams:
-            if hp in self.hparams:
-                self.hparams[hp] = hyperparams[hp]
-            else:
-                raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
+        Cnn.set_hyperparameters(self, hyperparams)
 
         self.conv = self.fc = self.out_layer = None
         self.num_flat_features = 0
@@ -1130,3 +1126,43 @@ class ResNet(Cnn):
         conv_out = self.conv(x)
         output = self.fc(conv_out.view(-1, self.num_flat_features))
         return output
+
+
+class SimplyResNet(ResNet):
+    def __init__(self, num_classes, num_res, activation='relu', version=1, input_dim=None, lr=0.001, alpha=0.0,
+                 eps=1e-8, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5,
+                 num_lr_decay=3):
+
+        """
+        Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
+        Image Recogniton" (Ref 1).
+
+        :param num_classes: Number of classes
+        :param num_res: Number of residual module in each sub sampling level
+        :param input_dim: Image input dimensions [height, width, deep]
+        :param activation: Activation function (default: relu)
+        :param version: Which version of the ResNet should be use. V1: Post activation, V2: Pre activation
+        :param lr: The initial learning rate used with the Adam Optimizer
+        :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
+        :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
+        :param b_size: Batch size as integer (default: 15)
+        :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
+        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
+        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
+                             seem to converge.
+        """
+
+        conv = np.array([16, 3, 1])  # First conv layer: 16 output channels, kernel 3x3 and same padding type
+        res = np.array([[num_res, 3], [num_res, 3], [num_res, 3]])
+        pool1 = np.array([0, 0, 0])  # No pooling layer after the first convolution
+        pool2 = np.array([4, 1, 1])  # Adaptive average pooling after the last convolution layer.
+        fc_config = None  # No extra fully connected after the the convolutional part.
+
+        ResNet.__init__(self, num_classes=num_classes, conv_config=conv, res_config=res, pool1=pool1, pool2=pool2,
+                        fc_config=fc_config, activation=activation, version=version, input_dim=input_dim, lr=lr,
+                        alpha=alpha, eps=eps, b_size=b_size, num_epoch=num_epoch, num_stop_epoch=num_stop_epoch,
+                        lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay, valid_size=valid_size, tol=tol)
