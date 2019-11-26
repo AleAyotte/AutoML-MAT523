@@ -655,7 +655,8 @@ class Cnn(Model, torch.nn.Module):
         :param loss: Current loss of the training
         :param accuracy: Current validation accuracy
         """
-        if not (self.path is None):
+
+        if self.path is not None:
             torch.save({"epoch": epoch,
                         "model_state_dict": self.state_dict(),
                         "loss": loss,
@@ -665,12 +666,11 @@ class Cnn(Model, torch.nn.Module):
 
         """
         Restore the weight from the last checkpoint saved during training
-
-        :return:
         """
 
-        checkpoint = torch.load(self.path)
-        self.load_state_dict(checkpoint['model_state_dict'])
+        if self.path is not None:
+            checkpoint = torch.load(self.path)
+            self.load_state_dict(checkpoint['model_state_dict'])
 
     def switch_device(self, _device):
 
@@ -786,6 +786,9 @@ class Cnn(Model, torch.nn.Module):
                 best_epoch = epoch
                 num_epoch_no_change = 0
 
+                # We make a save of the model at his best epoch
+                self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
+
             elif num_epoch_no_change < self.num_stop_epoch - 1:
                 num_epoch_no_change += 1
 
@@ -798,6 +801,9 @@ class Cnn(Model, torch.nn.Module):
 
             else:
                 break
+
+        # We restore the weight of the model at his best epoch
+        self.restore()
 
     def predict(self, X):
 
