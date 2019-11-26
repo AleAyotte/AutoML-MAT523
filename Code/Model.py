@@ -439,7 +439,8 @@ class MLP(Model):
 
 class Cnn(Model, torch.nn.Module):
     def __init__(self, num_classes, activation='relu', lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15,
-                 num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
+                 num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3,
+                 save_path=None):
 
         """
         Mother class for all cnn pytorch model. Only build layer and foward are not implemented in this model.
@@ -459,6 +460,7 @@ class Cnn(Model, torch.nn.Module):
         :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
         :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
                              seem to converge.
+        :param save_path: Directory path where the checkpoints will be write during the training
         """
 
         Model.__init__(self, {"lr": Hyperparameter("lr", HPtype.real, [lr]),
@@ -482,6 +484,7 @@ class Cnn(Model, torch.nn.Module):
         self.tol = tol
         self.num_stop_epoch = num_stop_epoch
         self.num_lr_decay = num_lr_decay
+        self.path = save_path
 
         # Hyperparameters dictionary
         self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size,
@@ -540,29 +543,6 @@ class Cnn(Model, torch.nn.Module):
         else:
             return 0
 
-    def get_activation_function(self):
-
-        """
-        This method is used to generate an activation function to build the CNN layer.
-
-        :return: A torch.nn module that correspond to the activation function
-        """
-
-        if self.hparams["activation"] == "relu":
-            return torch.nn.ReLU()
-        elif self.hparams["activation"] == "elu":
-            return torch.nn.ELU()
-        elif self.hparams["activation"] == "prelu":
-            return torch.nn.PReLU()
-        elif self.hparams["activation"] == "sigmoid":
-            return torch.nn.Sigmoid()
-        elif self.hparams["activation"] == "swish":
-            return Module.Swish()
-        elif self.hparams["activation"] == "mish":
-            return Module.Mish()
-        else:
-            raise Exception("No such activation has this name: {}".format(self.hparams["activation"]))
-
     @staticmethod
     def build_pooling_layer(pool_layer):
 
@@ -591,6 +571,29 @@ class Cnn(Model, torch.nn.Module):
                             "\n 0: No pooling; 1: MaxPool; 2: AvgPool; 3: Adaptative MaxPool; 4: Adaptative AvgPool")
         else:
             return None
+
+    def get_activation_function(self):
+
+        """
+        This method is used to generate an activation function to build the CNN layer.
+
+        :return: A torch.nn module that correspond to the activation function
+        """
+
+        if self.hparams["activation"] == "relu":
+            return torch.nn.ReLU()
+        elif self.hparams["activation"] == "elu":
+            return torch.nn.ELU()
+        elif self.hparams["activation"] == "prelu":
+            return torch.nn.PReLU()
+        elif self.hparams["activation"] == "sigmoid":
+            return torch.nn.Sigmoid()
+        elif self.hparams["activation"] == "swish":
+            return Module.Swish()
+        elif self.hparams["activation"] == "mish":
+            return Module.Mish()
+        else:
+            raise Exception("No such activation has this name: {}".format(self.hparams["activation"]))
 
     def set_hyperparameters(self, hyperparams):
 
@@ -635,8 +638,39 @@ class Cnn(Model, torch.nn.Module):
             torch.nn.init.zeros_(m.bias)
 
     def print_params(self):
+
+        """
+        Print all weight of the model in the terminal
+        """
+
         for param in self.parameters():
             print(param.name, param.data)
+
+    def save_checkpoint(self, epoch, loss, accuracy):
+
+        """
+        Save the model and his at a the current state if the self.path is not None.
+
+        :param epoch: Current epoch of the training
+        :param loss: Current loss of the training
+        :param accuracy: Current validation accuracy
+        """
+        if not (self.path is None):
+            torch.save({"epoch": epoch,
+                        "model_state_dict": self.state_dict(),
+                        "loss": loss,
+                        "accuracy": accuracy}, self.path)
+
+    def restore(self):
+
+        """
+        Restore the weight from the last checkpoint saved during training
+
+        :return:
+        """
+
+        checkpoint = torch.load(self.path)
+        self.load_state_dict(checkpoint['model_state_dict'])
 
     def switch_device(self, _device):
 
@@ -824,7 +858,7 @@ class Cnn(Model, torch.nn.Module):
 class CnnVanilla(Cnn):
     def __init__(self, num_classes, conv_config, pool_config, fc_config, activation='relu', input_dim=None, lr=0.001,
                  alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
-                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
+                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3, save_path=None):
 
         """
         Class that generate a convolutional neural network using the sequential module of the Pytorch library.
@@ -854,11 +888,12 @@ class CnnVanilla(Cnn):
         :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
         :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
                              seem to converge.
+        :param save_path: Directory path where the checkpoints will be write during the training
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
                      b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
-                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
+                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay, save_path=save_path)
 
         # We need to save the model configuration parameters to rebuild it during the hyper-parameters research
         self.conv_config = conv_config
@@ -975,7 +1010,7 @@ class CnnVanilla(Cnn):
 class ResNet(Cnn):
     def __init__(self, num_classes, conv_config, res_config, pool1, pool2, fc_config, activation='relu', version=1,
                  input_dim=None, lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10,
-                 tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
+                 tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3, save_path=None):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
@@ -1011,11 +1046,12 @@ class ResNet(Cnn):
         :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
         :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
                              seem to converge.
+        :param save_path: Directory path where the checkpoints will be write during the training
         """
 
         Cnn.__init__(self, num_classes, activation=activation, lr=lr, alpha=alpha, eps=eps, drop_rate=drop_rate,
                      b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
-                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
+                     lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay, save_path=save_path)
 
         # Hyper-parameters specifics to the ResNet
         if version == 1 or version == 2:
@@ -1175,7 +1211,7 @@ class ResNet(Cnn):
 class SimpleResNet(ResNet):
     def __init__(self, num_classes, num_res, activation='relu', version=1, input_dim=None, lr=0.001, alpha=0.0,
                  eps=1e-8, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5,
-                 num_lr_decay=3):
+                 num_lr_decay=3, save_path=None):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
@@ -1198,6 +1234,7 @@ class SimpleResNet(ResNet):
         :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
         :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
                              seem to converge.
+        :param save_path: Directory path where the checkpoints will be write during the training
         """
 
         conv = np.array([16, 3, 1])  # First conv layer: 16 output channels, kernel 3x3 and same padding type
@@ -1209,7 +1246,8 @@ class SimpleResNet(ResNet):
         ResNet.__init__(self, num_classes=num_classes, conv_config=conv, res_config=res, pool1=pool1, pool2=pool2,
                         fc_config=fc_config, activation=activation, version=version, input_dim=input_dim, lr=lr,
                         alpha=alpha, eps=eps, b_size=b_size, num_epoch=num_epoch, num_stop_epoch=num_stop_epoch,
-                        lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay, valid_size=valid_size, tol=tol)
+                        lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay, valid_size=valid_size, tol=tol,
+                        save_path=save_path)
 
         self.hparams['num_res'] = num_res
         self.HP_space["num_res"] = Hyperparameter("num_res", HPtype.integer, [num_res])
