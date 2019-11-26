@@ -7,12 +7,8 @@
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
-import socket
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
-import hpbandster.core.nameserver as hpns
-import hpbandster.core.result as hpres
-from hpbandster.optimizers import BOHB
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe
 from Model import HPtype
@@ -21,6 +17,7 @@ from copy import deepcopy
 from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
+from Worker import start_hpbandster_process
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'BOHB']
@@ -193,6 +190,22 @@ class HPtuner:
         optimizer.run_optimization(max_iter=(n_evals - nbr_initial_evals))
         optimizer.plot_acquisition()
 
+    def hyperband(self, loss, n_evals):
+
+        """
+        Tune's our model's hyper-parameters using hyperband method
+
+        :param loss: loss function to minimize
+        :param n_evals: maximal number of evaluations to do (budget)
+        """
+        print(self.search_space.space)
+        NS, optimizer = start_hpbandster_process(self.method, self.search_space.space, loss)
+
+        res = optimizer.run(n_iterations=n_evals)
+
+        optimizer.shutdown(shutdown_workers=True)
+        NS.shutdown()
+
     def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1, valid_size=0.2, **kwargs):
 
         """
@@ -235,6 +248,9 @@ class HPtuner:
 
         elif self.method == 'gaussian_process':
             self.gaussian_process(loss, n_evals, **kwargs)
+
+        elif self.method == 'hyperband':
+            self.hyperband(loss, n_evals)
 
         else:
             raise NotImplementedError
@@ -605,7 +621,8 @@ class HpBandSterSearchSpace(SearchSpace):
         # We extract CSH object from the dictionnary and put it in a list
         if len(self.space) != 0:
             self.space = list(self.space.values())
-            self.space = cs.add_hyperparameters(self.space)
+            cs.add_hyperparameters(self.space)
+            self.space = cs
 
         else:
             raise Exception('Search space has not been modified yet, no tuning can be done.')
