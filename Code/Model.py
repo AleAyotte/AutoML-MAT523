@@ -3,7 +3,7 @@
     @Author:            Nicolas Raymond
                         Alexandre Ayotte
     @Creation Date:     30/09/2019
-    @Last modification: 16/11/2019
+    @Last modification: 25/11/2019
 
     @Reference: 1)  K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In CVPR, 2016.
 
@@ -465,7 +465,9 @@ class Cnn(Model, torch.nn.Module):
                               "alpha": Hyperparameter("alpha", HPtype.real, [alpha]),
                               "eps": Hyperparameter("eps", HPtype.real, [eps]),
                               "dropout": Hyperparameter("dropout", HPtype.real, [drop_rate]),
-                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size])
+                              "b_size": Hyperparameter("b_size", HPtype.integer, [b_size]),
+                              "lr_decay_rate": Hyperparameter("lr_decay_rate", HPtype.integer, [lr_decay_rate]),
+                              "activation": Hyperparameter("activation", HPtype.categorical, [activation])
                               })
 
         torch.nn.Module.__init__(self)
@@ -473,18 +475,17 @@ class Cnn(Model, torch.nn.Module):
         # Base parameters (Parameters that will not change during training or hyperparameters search)
         self.classes = num_classes
         self.num_epoch = num_epoch
-        self.activation = activation
         self.device_ = torch.device("cpu")
 
         # early stopping parameters
         self.valid_size = valid_size
         self.tol = tol
         self.num_stop_epoch = num_stop_epoch
-        self.lr_decay_rate = lr_decay_rate
         self.num_lr_decay = num_lr_decay
 
         # Hyperparameters dictionary
-        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size}
+        self.hparams = {"lr": lr, "alpha": alpha, "eps": eps, "dropout": drop_rate, "b_size": b_size,
+                        "lr_decay_rate": lr_decay_rate, "activation": activation}
 
         self.drop = torch.nn.Dropout(p=self.hparams["dropout"])
         self.soft = torch.nn.LogSoftmax(dim=-1)
@@ -547,20 +548,20 @@ class Cnn(Model, torch.nn.Module):
         :return: A torch.nn module that correspond to the activation function
         """
 
-        if self.activation == "relu":
+        if self.hparams["activation"] == "relu":
             return torch.nn.ReLU()
-        elif self.activation == "elu":
+        elif self.hparams["activation"] == "elu":
             return torch.nn.ELU()
-        elif self.activation == "prelu":
+        elif self.hparams["activation"] == "prelu":
             return torch.nn.PReLU()
-        elif self.activation == "sigmoid":
+        elif self.hparams["activation"] == "sigmoid":
             return torch.nn.Sigmoid()
-        elif self.activation == "swish":
+        elif self.hparams["activation"] == "swish":
             return Module.Swish()
-        elif self.activation == "mish":
+        elif self.hparams["activation"] == "mish":
             return Module.Mish()
         else:
-            raise Exception("No such activation has this name: {}".format(self.activation))
+            raise Exception("No such activation has this name: {}".format(self.hparams["activation"]))
 
     @staticmethod
     def build_pooling_layer(pool_layer):
@@ -605,6 +606,8 @@ class Cnn(Model, torch.nn.Module):
             else:
                 raise Exception('No such hyper-parameter "{}" in our model'.format(hp))
 
+        self.drop.p = self.hparams["dropout"]
+
     def init_weights(self, m):
 
         """
@@ -620,10 +623,10 @@ class Cnn(Model, torch.nn.Module):
 
         elif type(m) == torch.nn.Conv2d:
 
-            if self.activation != "swish" and self.activation != "mish":
-                torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.activation)
+            if self.hparams["activation"] == "relu" and self.hparams["activation"] == "sigmoide":
+                torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
             else:
-                torch.nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+                torch.nn.init.kaiming_normal_(m.weight)
             if not(m.bias is None):
                 torch.nn.init.zeros_(m.bias)
 
@@ -693,6 +696,7 @@ class Cnn(Model, torch.nn.Module):
 
         # Indicator for early stopping
         best_accuracy = 0
+        best_epoch = -1
         num_epoch_no_change = 0
         lr_decay_step = 0
         learning_rate = self.hparams["lr"]
@@ -735,8 +739,9 @@ class Cnn(Model, torch.nn.Module):
 
             if verbose:
                 end = time.time()
-                print("\n epoch: {:d}, Execution time: {}, average_loss: {:.4f}, validation_accuracy: {}".format(
-                    epoch + 1, end - begin, sum_loss / it, current_accuracy))
+                print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
+                      " best accuracy: {:.2f}%, best epoch {:d}:".format
+                      (epoch + 1, end - begin, sum_loss / it, current_accuracy*100, best_accuracy*100, best_epoch + 1))
                 begin = time.time()
 
             # ------------------------------------------------------------------------------------------
@@ -744,6 +749,7 @@ class Cnn(Model, torch.nn.Module):
             # ------------------------------------------------------------------------------------------
             if current_accuracy - best_accuracy >= self.tol:
                 best_accuracy = current_accuracy
+                best_epoch = epoch
                 num_epoch_no_change = 0
 
             elif num_epoch_no_change < self.num_stop_epoch - 1:
@@ -751,7 +757,7 @@ class Cnn(Model, torch.nn.Module):
 
             elif lr_decay_step < self.num_lr_decay:
                 lr_decay_step += 1
-                learning_rate /= 5
+                learning_rate /= self.hparams["lr_decay_rate"]
                 optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
                                              eps=self.hparams["eps"], amsgrad=False)
                 num_epoch_no_change = 0
@@ -816,30 +822,29 @@ class Cnn(Model, torch.nn.Module):
 
 
 class CnnVanilla(Cnn):
-    def __init__(self, num_classes, conv_layer, pool_list, fc_nodes, activation='relu', input_dim=None, lr=0.001,
+    def __init__(self, num_classes, conv_config, pool_config, fc_config, activation='relu', input_dim=None, lr=0.001,
                  alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
                  num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
-        Class that generate a convolutional neural network using the sequential module of the Pytorch library. Should be
-        faster than CnnVanilla sub class. (~15-20% faster)
+        Class that generate a convolutional neural network using the sequential module of the Pytorch library.
 
         :param num_classes: Number of class
-        :param conv_layer: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
+        :param conv_config: A Cx3 numpy matrix where each row represent the parameters of a 2D convolutional layer.
                            [i, 0]: Number of output channels of the ith layer
                            [i, 1]: Square convolution dimension of the ith layer
                            [i, 2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
-        :param pool_list: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
+        :param pool_config: An Cx3 numpy matrix where each row represent the parameters of a 2D pooling layer.
                           [i, 0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
                           [i, 1]: Pooling kernel height
                           [i, 2]: Pooling kernel width
-        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param fc_config: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: relu)
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
-        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         :param valid_size: Portion of the data that will be used for validation.
@@ -855,6 +860,11 @@ class CnnVanilla(Cnn):
                      b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
                      lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
+        # We need to save the model configuration parameters to rebuild it during the hyper-parameters research
+        self.conv_config = conv_config
+        self.pool_config = pool_config
+        self.fc_config = fc_config
+
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.conv = None
         self.fc = None
@@ -862,10 +872,27 @@ class CnnVanilla(Cnn):
 
         # Default image dimension. Height: 28, width: 28 and deep: 1 (MNIST)
         if input_dim is None:
-            input_dim = np.array([28, 28, 1])
+            self.input_dim = np.array([28, 28, 1])
+        else:
+            self.input_dim = input_dim
 
         # We build the model
-        self.build_layer(conv_layer, pool_list, fc_nodes, input_dim)
+        self.build_layer(self.conv_config, self.pool_config, self.fc_config, self.input_dim)
+
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Function that set the new hyper-parameters and rebuild the model after the update
+
+        :param hyperparams: Dictionary specifying hyper-parameters to change.
+        """
+
+        Cnn.set_hyperparameters(self, hyperparams)
+
+        self.conv = self.fc = None
+        self.num_flat_features = 0
+
+        self.build_layer(self.conv_config, self.pool_config, self.fc_config, self.input_dim)
 
     def build_layer(self, conv_layer, pool_list, fc_nodes, input_dim):
 
@@ -946,16 +973,16 @@ class CnnVanilla(Cnn):
 
 
 class ResNet(Cnn):
-    def __init__(self, num_classes, conv, res_config, pool1, pool2, fc_nodes, activation='relu', input_dim=None,
-                 lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005,
-                 num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
+    def __init__(self, num_classes, conv_config, res_config, pool1, pool2, fc_config, activation='relu', version=1,
+                 input_dim=None, lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.0, b_size=15, num_epoch=10, valid_size=0.10,
+                 tol=0.005, num_stop_epoch=10, lr_decay_rate=5, num_lr_decay=3):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
         Image Recogniton" (Ref 1).
 
         :param num_classes: Number of classes
-        :param conv: A tuple that represent the parameters of the first convolutional layer.
+        :param conv_config: A tuple that represent the parameters of the first convolutional layer.
                      [0]: Number of output channels (features maps)
                      [1]: Kernel size: (Example: 3.  For a 3x3 kernel)
                      [2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
@@ -967,13 +994,14 @@ class ResNet(Cnn):
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
                       [1]: Pooling kernel height
                       [2]: Pooling kernel width
-        :param fc_nodes: A numpy array where each elements represent the number of nodes of a fully connected layer
+        :param fc_config: A numpy array where each elements represent the number of nodes of a fully connected layer
         :param input_dim: Image input dimensions [height, width, deep]
         :param activation: Activation function (default: relu)
+        :param version: Which version of the ResNet should be use. V1: Post activation, V2: Pre activation
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
-        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.5
+        :param drop_rate: Dropout rate of each node of all fully connected layer (default: 0.0)
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         :param valid_size: Portion of the data that will be used for validation.
@@ -989,6 +1017,19 @@ class ResNet(Cnn):
                      b_size=b_size, num_epoch=num_epoch, valid_size=valid_size, tol=tol, num_stop_epoch=num_stop_epoch,
                      lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay)
 
+        # Hyper-parameters specifics to the ResNet
+        if version == 1 or version == 2:
+            self.hparams['version'] = version
+            self.HP_space["version"] = Hyperparameter("version", HPtype.integer, [version])
+        else:
+            raise Exception("Version parameter set to {}. Choose 1 or 2".format(version))
+
+        # We need to save the model configuration parameters to rebuild it during the hyper-parameters research
+        self.conv_config = conv_config
+        self.res_config = res_config
+        self.pool = [pool1, pool2]
+        self.fc_config = fc_config
+
         # We need a special type of list to ensure that torch detect every layer and node of the neural net
         self.conv = None
         self.fc = None
@@ -997,9 +1038,26 @@ class ResNet(Cnn):
 
         # Default image dimension. Height: 32, width: 32 and deep: 3 (CIFAR10)
         if input_dim is None:
-            input_dim = np.array([32, 32, 3])
+            self.input_dim = np.array([32, 32, 3])
+        else:
+            self.input_dim = input_dim
 
-        self.build_layer(conv, res_config, pool1, pool2, fc_nodes, input_dim)
+        self.build_layer(self.conv_config, self.res_config, self.pool[0], self.pool[1], self.fc_config, self.input_dim)
+
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Function that set the new hyper-parameters and rebuild the model after the update
+
+        :param hyperparams: Dictionary specifying hyper-parameters to change.
+        """
+
+        Cnn.set_hyperparameters(self, hyperparams)
+
+        self.conv = self.fc = self.out_layer = None
+        self.num_flat_features = 0
+
+        self.build_layer(self.conv_config, self.res_config, self.pool[0], self.pool[1], self.fc_config, self.input_dim)
 
     def build_layer(self, conv, res_config, pool1, pool2, fc_nodes, input_dim):
 
@@ -1040,20 +1098,28 @@ class ResNet(Cnn):
         #                                      RESIDUAL PART
         # ------------------------------------------------------------------------------------------
 
+        # We select the right resnet module according to the given version
+        if self.hparams['version'] == 1:
+            res_module = Module.ResModuleV1
+        else:
+            res_module = Module.ResModuleV2
+
+        # Number of features that enter in the first residual module
         f_in = conv[0]
 
+        # Construct the chain of residual module
         for it in range(len(res_config)):
-            conv_list.extend([Module.ResModule(f_in, res_config[it, 1], self.activation,
-                                               twice=(it != 0), subsample=(it != 0))])
+            conv_list.extend([res_module(f_in, res_config[it, 1], self.hparams["activation"],
+                                         twice=(it != 0), subsample=(it != 0))])
 
-            # Update
+            # Update features maps information
             if it > 0:
                 f_in *= 2
                 size = size / 2
 
             for _ in range(res_config[it, 0] - 1):
-                conv_list.extend([Module.ResModule(f_in, res_config[it, 1], self.activation,
-                                                   twice=False, subsample=False)])
+                conv_list.extend([res_module(f_in, res_config[it, 1], self.hparams["activation"],
+                                             twice=False, subsample=False)])
 
         if pool2[0] != 0:
             conv_list.extend([self.build_pooling_layer(pool2)])
@@ -1104,3 +1170,64 @@ class ResNet(Cnn):
         conv_out = self.conv(x)
         output = self.fc(conv_out.view(-1, self.num_flat_features))
         return output
+
+
+class SimpleResNet(ResNet):
+    def __init__(self, num_classes, num_res, activation='relu', version=1, input_dim=None, lr=0.001, alpha=0.0,
+                 eps=1e-8, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5,
+                 num_lr_decay=3):
+
+        """
+        Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
+        Image Recogniton" (Ref 1).
+
+        :param num_classes: Number of classes
+        :param num_res: Number of residual module in each sub sampling level
+        :param input_dim: Image input dimensions [height, width, deep]
+        :param activation: Activation function (default: relu)
+        :param version: Which version of the ResNet should be use. V1: Post activation, V2: Pre activation
+        :param lr: The initial learning rate used with the Adam Optimizer
+        :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
+        :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
+        :param b_size: Batch size as integer (default: 15)
+        :param num_epoch: Number of epoch to do during the training (default: 10)
+        :param valid_size: Portion of the data that will be used for validation.
+        :param tol: Minimum difference between two epoch validation accuracy to consider that there is an improvement.
+        :param num_stop_epoch: Number of consecutive epoch with no improvement on the validation accuracy
+                               before early stopping
+        :param lr_decay_rate: Rate of the learning rate decay when the optimizer does not seem to converge
+        :param num_lr_decay: Number of learning rate decay step we do before stop training when the optimizer does not
+                             seem to converge.
+        """
+
+        conv = np.array([16, 3, 1])  # First conv layer: 16 output channels, kernel 3x3 and same padding type
+        res = np.array([[num_res, 3], [num_res, 3], [num_res, 3]])
+        pool1 = np.array([0, 0, 0])  # No pooling layer after the first convolution
+        pool2 = np.array([4, 1, 1])  # Adaptive average pooling after the last convolution layer.
+        fc_config = None  # No extra fully connected after the the convolutional part.
+
+        ResNet.__init__(self, num_classes=num_classes, conv_config=conv, res_config=res, pool1=pool1, pool2=pool2,
+                        fc_config=fc_config, activation=activation, version=version, input_dim=input_dim, lr=lr,
+                        alpha=alpha, eps=eps, b_size=b_size, num_epoch=num_epoch, num_stop_epoch=num_stop_epoch,
+                        lr_decay_rate=lr_decay_rate, num_lr_decay=num_lr_decay, valid_size=valid_size, tol=tol)
+
+        self.hparams['num_res'] = num_res
+        self.HP_space["num_res"] = Hyperparameter("num_res", HPtype.integer, [num_res])
+
+    def set_hyperparameters(self, hyperparams):
+
+        """
+        Function that set the new hyper-parameters and rebuild the model after the update
+
+        :param hyperparams: Dictionary specifying hyper-parameters to change.
+        """
+
+        Cnn.set_hyperparameters(self, hyperparams)
+
+        # We update the residual layer configuration.
+        self.res_config = np.array([[self.hparams['num_res'], 3] for _ in range(3)])
+
+        self.conv = self.fc = self.out_layer = None
+        self.num_flat_features = 0
+
+        self.build_layer(self.conv_config, self.res_config, self.pool[0], self.pool[1], self.fc_config, self.input_dim)
