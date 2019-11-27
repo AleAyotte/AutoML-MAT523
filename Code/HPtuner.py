@@ -339,14 +339,13 @@ class HPtuner:
             pbar = tqdm(total=n_evals, postfix='best loss : ' +
                                                str(round(1 - self.tuning_history.actual_best_accuracy, 6)))
 
-            def loss(hyperparams, budget):
+            def loss(hyperparams):
 
                 """
                 Returns the mean negative value of the accuracy on a cross validation
                 (minimize 1 - accuracy is equivalent to maximize accuracy)
 
                 :param hyperparams: 2d-numpy array containing only values of hyper-parameters
-                :param budget: maximal number of epoch allowed for the model training
                 :return: 1 - (mean accuracy on cross validation)
                 """
                 # We extract the values from the 2d-numpy array
@@ -380,13 +379,14 @@ class HPtuner:
 
             pickle_obj = pickle.dumps(self.model)
 
-            def loss(hyperparams):
+            def loss(hyperparams, budget):
 
                 """
                 Returns the mean negative value of the accuracy on a cross validation
                 (minimize 1 - accuracy is equivalent to maximize accuracy)
 
-                :param hyperparams: 2d-numpy array containing only values of hyper-parameters
+                :param hyperparams: dict of hyper-parameters
+                :param budget: maximal number of epoch allowed for the model training
                 :return: 1 - (mean accuracy on cross validation)
 
                 """
@@ -398,6 +398,9 @@ class HPtuner:
 
                 # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
                 self.float_to_int(hyperparams)
+
+                # We add or change the parameter "max_iter"
+                hyperparams['max_iter'] = budget
 
                 # We set the hyper-parameters and compute the loss associated to it
                 copied_model.set_hyperparameters(hyperparams)
