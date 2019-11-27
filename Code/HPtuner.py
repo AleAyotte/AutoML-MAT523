@@ -7,6 +7,7 @@
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
+import pickle
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
 from sklearn.model_selection import ParameterGrid
@@ -307,7 +308,7 @@ class HPtuner:
         :return: A specific loss function for our tuner
         """
 
-        if self.method in ['grid_search', 'random_search', 'tpe', 'hyperband', 'BOHB']:
+        if self.method in ['grid_search', 'random_search', 'tpe']:
 
             def loss(hyperparams):
                 """
@@ -332,19 +333,20 @@ class HPtuner:
 
             return loss
 
-        if self.method == 'gaussian_process':
+        elif self.method == 'gaussian_process':
 
             # We start a loading bar
             pbar = tqdm(total=n_evals, postfix='best loss : ' +
                                                str(round(1 - self.tuning_history.actual_best_accuracy, 6)))
 
-            def loss(hyperparams):
+            def loss(hyperparams, budget):
 
                 """
                 Returns the mean negative value of the accuracy on a cross validation
                 (minimize 1 - accuracy is equivalent to maximize accuracy)
 
                 :param hyperparams: 2d-numpy array containing only values of hyper-parameters
+                :param budget: maximal number of epoch allowed for the model training
                 :return: 1 - (mean accuracy on cross validation)
                 """
                 # We extract the values from the 2d-numpy array
@@ -355,6 +357,9 @@ class HPtuner:
 
                 # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
                 self.float_to_int(hyperparams)
+
+                # We add or change the parameter "max_iter"
+                hyperparams['max_iter'] = budget
 
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
@@ -367,6 +372,38 @@ class HPtuner:
                 pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 6))
                 pbar.update()
 
+                return loss_value
+
+            return loss
+
+        elif self.method == 'hyperband' or self.method == 'BOHB':
+
+            pickle_obj = pickle.dumps(self.model)
+
+            def loss(hyperparams):
+
+                """
+                Returns the mean negative value of the accuracy on a cross validation
+                (minimize 1 - accuracy is equivalent to maximize accuracy)
+
+                :param hyperparams: 2d-numpy array containing only values of hyper-parameters
+                :return: 1 - (mean accuracy on cross validation)
+
+                """
+                # We start a new model base on default parameter of our original model
+                copied_model = pickle.loads(pickle_obj)
+
+                if self.log_scaled_hyperparameters:
+                    self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
+
+                # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
+                self.float_to_int(hyperparams)
+
+                # We set the hyper-parameters and compute the loss associated to it
+                copied_model.set_hyperparameters(hyperparams)
+                loss_value = 1 - (copied_model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                                nb_of_cross_validation=nb_of_cross_validation,
+                                                                valid_size=valid_size))
                 return loss_value
 
             return loss
