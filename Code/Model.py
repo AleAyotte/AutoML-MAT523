@@ -429,7 +429,7 @@ class MLP(Model):
         # hyper-parameters from the dictionary
         hidden_layers_number = hps.pop('hidden_layers_number', self.HP_space['hidden_layers_number'].value)
         layers_size = hps.pop('layers_size', self.HP_space['layers_size'].value)
-        hidden_layer_sizes = tuple([layers_size]*hidden_layers_number)
+        hidden_layer_sizes = tuple([layers_size[0]]*hidden_layers_number[0])
 
         # We add hidden_layer_sizes to the dict
         hps['hidden_layer_sizes'] = hidden_layer_sizes
