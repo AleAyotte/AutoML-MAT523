@@ -7,12 +7,10 @@
                         HpBandster library. It also provides functions to setup the environment before using
                         HpBandster.
 """
-
+import ConfigSpace as CS
 import time
-import os
 import hpbandster.core.nameserver as hpns
 import hpbandster.core.result as hpres
-import socket
 from hpbandster.optimizers import BOHB
 from hpbandster.optimizers import HyperBand
 from hpbandster.core.worker import Worker
@@ -26,7 +24,7 @@ class MyWorker(Worker):
         self.sleep_interval = sleep_interval
         self.loss_function = loss_function
 
-    def compute(self, config, **kwargs):
+    def compute(self, config, budget, **kwargs):
 
         """
 
@@ -35,6 +33,7 @@ class MyWorker(Worker):
 
         Args:
             config: dictionary containing the sampled configurations by the optimizer
+            budget: number of epoch allowed the iteration
 
         Returns:
             dictionary with mandatory fields:
@@ -42,13 +41,30 @@ class MyWorker(Worker):
                 'info' (dict)
         """
 
-        res = self.loss_function(config)
+        res = self.loss_function(config, budget)
         time.sleep(self.sleep_interval)
 
         return ({
             'loss': res,  # this is the a mandatory field to run hyperband
-            'info': {'res':res}  # can be used for any user-defined information - also mandatory
+            'info': config  # can be used for any user-defined information - also mandatory
         })
+
+    @staticmethod
+    def get_configspace(space):
+
+        """
+        Converts the dictionnary of CSH object to a proper ConfigurationSpace accepted by HpBandSter.
+        """
+
+        # Initialization of configuration space
+        cs = CS.ConfigurationSpace()
+
+        # We extract CSH object from the dictionnary and put it in a list
+        if len(space) != 0:
+            space = list(space.values())
+            cs.add_hyperparameters(space)
+
+        return (cs)
 
 
 def start_hpbandster_process(method, configspace, loss):
@@ -62,39 +78,34 @@ def start_hpbandster_process(method, configspace, loss):
     :return: NameServer and HpBandSter optimizer
     """
 
-    # Set the host for the process
-    host = socket.gethostbyname('localhost')
-
     # This line is most useful for really long runs, where intermediate results could already be
     # interesting. The core.result submodule contains the functionality to read the two generated
     # files (results.json and configs.json) and create a Result object.
-    #result_logger = hpres.json_result_logger(directory=os.getcwd(), overwrite=True)
+    # result_logger = hpres.json_result_logger(directory=os.getcwd(), overwrite=True)
 
     # Start a nameserver:
-    NS = hpns.NameServer(run_id=method, host=host)
+    NS = hpns.NameServer(run_id=method)
     ns_host, ns_port = NS.start()
 
     # Start local worker
-    w = MyWorker(run_id=method, host=host, nameserver=ns_host, nameserver_port=ns_port, timeout=120, loss_function=loss)
+    w = MyWorker(run_id=method, nameserver=ns_host, nameserver_port=ns_port, timeout=120, loss_function=loss)
     w.run(background=True)
 
     if method == 'BOHB':
 
-        optimizer = BOHB(configspace=configspace,
+        optimizer = BOHB(configspace=w.get_configspace(configspace),
                          run_id=method,
-                         host=host,
                          nameserver=ns_host,
                          nameserver_port=ns_port,
-                         min_budget=1, max_budget=9,
+                         min_budget=5, max_budget=50,
                          )
     else:
 
-        optimizer = HyperBand(configspace=configspace,
+        optimizer = HyperBand(configspace=w.get_configspace(configspace),
                               run_id=method,
-                              host=host,
                               nameserver=ns_host,
                               nameserver_port=ns_port,
-                              min_budget=1, max_budget=9,
+                              min_budget=5, max_budget=50,
                               )
 
     return NS, optimizer
