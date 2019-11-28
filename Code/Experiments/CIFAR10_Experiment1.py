@@ -7,9 +7,9 @@
 """
 
 import os
-import DataManager as Dm
-from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
-import Model
+import Code.DataManager as Dm
+from Code.HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
+import Code.Model as Model
 import numpy as np
 
 
