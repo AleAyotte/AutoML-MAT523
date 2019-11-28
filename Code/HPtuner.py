@@ -199,10 +199,9 @@ class HPtuner:
         :param loss: loss function to minimize
         :param n_evals: maximal number of evaluations to do (budget)
         """
-        print(self.search_space.space)
         NS, optimizer = start_hpbandster_process(self.method, self.search_space.space, loss)
 
-        res = optimizer.run(n_iterations=n_evals)
+        res = optimizer.run(n_iterations=int(n_evals))
 
         optimizer.shutdown(shutdown_workers=True)
         NS.shutdown()
@@ -357,9 +356,6 @@ class HPtuner:
                 # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
                 self.float_to_int(hyperparams)
 
-                # We add or change the parameter "max_iter"
-                hyperparams['max_iter'] = budget
-
                 # We set the hyper-parameters and compute the loss associated to it
                 self.model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (self.model.cross_validation(X_train=X, t_train=t, dtset=dtset,
@@ -400,7 +396,7 @@ class HPtuner:
                 self.float_to_int(hyperparams)
 
                 # We add or change the parameter "max_iter"
-                hyperparams['max_iter'] = budget
+                hyperparams['max_iter'] = int(budget)
 
                 # We set the hyper-parameters and compute the loss associated to it
                 copied_model.set_hyperparameters(hyperparams)
@@ -648,24 +644,6 @@ class HpBandSterSearchSpace(SearchSpace):
         space = {}
 
         super(HpBandSterSearchSpace, self).__init__(space)
-
-    def reformat_for_tuning(self):
-
-        """
-        Converts the dictionnary of CSH object to a proper ConfigurationSpace accepted by HpBandSter.
-        """
-
-        # Initialization of configuration space
-        cs = CS.ConfigurationSpace()
-
-        # We extract CSH object from the dictionnary and put it in a list
-        if len(self.space) != 0:
-            self.space = list(self.space.values())
-            cs.add_hyperparameters(self.space)
-            self.space = cs
-
-        else:
-            raise Exception('Search space has not been modified yet, no tuning can be done.')
 
 
 @unique
