@@ -59,7 +59,7 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet_random_search', "CIFAR10", 50000, score)
+results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
 
 # ------------------------------------------------------------------------------------------
 #                                           TPE
@@ -84,7 +84,7 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet_TPE', "CIFAR10", 50000, score)
+results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
 
 
 # ------------------------------------------------------------------------------------------
@@ -110,7 +110,7 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet_TPE', "CIFAR10", 50000, score)
+results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
 
 # ------------------------------------------------------------------------------------------
 #                                   GAUSSIAN PROCESS (EI)
@@ -135,4 +135,4 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet_TPE', "CIFAR10", 50000, score)
+results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
