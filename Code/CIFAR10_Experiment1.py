@@ -9,7 +9,7 @@
 import os
 import DataManager as Dm
 from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
-import Model
+import Model as Model
 import numpy as np
 
 
@@ -18,6 +18,7 @@ d_train, d_test = Dm.load_cifar10()
 input_size = np.array([32, 32, 3])
 results_path = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 results_path = os.path.join(results_path, '')
+experiment_name = 'CF10Exp1'
 
 # ------------------------------------------------------------------------------------------
 #                                           RESNET
@@ -59,7 +60,7 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
+results.save_all_results(results_path, experiment_name, "CIFAR10", 50000, score)
 
 # ------------------------------------------------------------------------------------------
 #                                           TPE
@@ -84,8 +85,7 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
-
+results.save_all_results(results_path, experiment_name, "CIFAR10", 50000, score)
 
 # ------------------------------------------------------------------------------------------
 #                                   GAUSSIAN PROCESS (MPI)
@@ -110,7 +110,7 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
+results.save_all_results(results_path, experiment_name, "CIFAR10", 50000, score)
 
 # ------------------------------------------------------------------------------------------
 #                                   GAUSSIAN PROCESS (EI)
@@ -135,4 +135,4 @@ net.fit(dtset=d_train, verbose=True, gpu=True)
 
 score = net.score(dtset=d_test)
 
-results.save_all_results(results_path, 'ResNet', "CIFAR10", 50000, score)
+results.save_all_results(results_path, experiment_name, "CIFAR10", 50000, score)
