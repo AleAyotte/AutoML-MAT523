@@ -492,7 +492,8 @@ class Cnn(Model, torch.nn.Module):
 
         self.drop = torch.nn.Dropout(p=self.hparams["dropout"])
         self.soft = torch.nn.LogSoftmax(dim=-1)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.NLLLoss()
 
     @staticmethod
     def conv_out_size(in_size, conv_size, conv_type, pool):
@@ -1029,7 +1030,8 @@ class ResNet(Cnn):
                      [2]: Convolution type: (0: Valid (no zero padding), 1: Same (zero padding added))
         :param res_config: A Cx2 numpy matrix where each row represent the parameters of a sub-sampling level.
                            [i, 0]: Number of residual modules
-                           [i, 2]: Kernel size of the convolutional layers
+                           [i, 1]: Kernel size of the convolutional layers
+                           [i, 2]: The mixup hyper-parameters. (0 to disable the mixup)
         :param pool1: A tuple that represent the parameters of the pooling layer that came after the first conv layer
         :param pool2: A tuple that represent the parameters of the last pooling layer before the fully-connected layers
                       [0]: Pooling layer type: 0: No pooling, 1: Max pooling, 2: Average pooling
@@ -1077,6 +1079,7 @@ class ResNet(Cnn):
         self.fc = None
         self.num_flat_features = 0
         self.out_layer = None
+        self.mixup_index = None
 
         # Default image dimension. Height: 32, width: 32 and deep: 3 (CIFAR10)
         if input_dim is None:
@@ -1149,8 +1152,17 @@ class ResNet(Cnn):
         # Number of features that enter in the first residual module
         f_in = conv[0]
 
+        # We need a save the position of the mixup module in sequential container
+        self.mixup_index = []
+
         # Construct the chain of residual module
         for it in range(len(res_config)):
+
+            # We adding a mixup module.
+            if res_config[it, 2] != 0:
+                self.mixup_index.append(len(conv_list))
+                conv_list.extend([Module.Mixup(res_config[it, 2])])
+
             conv_list.extend([res_module(f_in, res_config[it, 1], self.hparams["activation"],
                                          twice=(it != 0), subsample=(it != 0))])
 
@@ -1216,8 +1228,8 @@ class ResNet(Cnn):
 
 class SimpleResNet(ResNet):
     def __init__(self, num_classes, num_res, activation='relu', version=1, input_dim=None, lr=0.001, alpha=0.0,
-                 eps=1e-8, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10, lr_decay_rate=5,
-                 num_lr_decay=3, save_path=None):
+                 eps=1e-8, mixup=None, b_size=15, num_epoch=10, valid_size=0.10, tol=0.005, num_stop_epoch=10,
+                 lr_decay_rate=5, num_lr_decay=3, save_path=None):
 
         """
         Class that generate a ResNet neural network inpired by the model from the paper "Deep Residual Learning for
@@ -1231,6 +1243,7 @@ class SimpleResNet(ResNet):
         :param lr: The initial learning rate used with the Adam Optimizer
         :param alpha: L2 penalty (regularization term) parameter as float (default: 0.0)
         :param eps: Adam optimizer hyper-parameters used to improve numerical stability (default: 1e-8)
+        :param mixup: A list of length 3 that correspond to the mixup hyper-parameters of each sub sampling level.
         :param b_size: Batch size as integer (default: 15)
         :param num_epoch: Number of epoch to do during the training (default: 10)
         :param valid_size: Portion of the data that will be used for validation.
@@ -1243,8 +1256,13 @@ class SimpleResNet(ResNet):
         :param save_path: Directory path where the checkpoints will be write during the training
         """
 
+        if mixup is None:
+            mixup = [0, 0, 0]
+        elif len(mixup) != 3:
+            raise Exception("mixup parameters need to be a list of 3 value")
+
         conv = np.array([16, 3, 1])  # First conv layer: 16 output channels, kernel 3x3 and same padding type
-        res = np.array([[num_res, 3], [num_res, 3], [num_res, 3]])
+        res = np.array([[num_res, 3, mixup[0]], [num_res, 3, mixup[1]], [num_res, 3, mixup[2]]])
         pool1 = np.array([0, 0, 0])  # No pooling layer after the first convolution
         pool2 = np.array([4, 1, 1])  # Adaptive average pooling after the last convolution layer.
         fc_config = None  # No extra fully connected after the the convolutional part.
@@ -1256,7 +1274,14 @@ class SimpleResNet(ResNet):
                         save_path=save_path)
 
         self.hparams['num_res'] = num_res
+        self.hparams['mixup_0'] = mixup[0]
+        self.hparams['mixup_1'] = mixup[1]
+        self.hparams['mixup_2'] = mixup[2]
+
         self.HP_space["num_res"] = Hyperparameter("num_res", HPtype.integer, [num_res])
+        self.HP_space["mixup_0"] = Hyperparameter("mixup_0", HPtype.real, [mixup[0]])
+        self.HP_space["mixup_1"] = Hyperparameter("mixup_1", HPtype.real, [mixup[1]])
+        self.HP_space["mixup_2"] = Hyperparameter("mixup_2", HPtype.real, [mixup[2]])
 
     def set_hyperparameters(self, hyperparams):
 
