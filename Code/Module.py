@@ -18,6 +18,7 @@
 import torch
 import torch.nn.functional as F
 import Model
+import numpy as np
 
 
 class ResModuleV1(torch.nn.Module):
@@ -190,7 +191,7 @@ class Mish(torch.nn.Module):
     def __init__(self):
 
         """
-        This the constructor of the mish activation function
+        This is the constructor of the mish activation function
         """
 
         torch.nn.Module.__init__(self)
@@ -205,3 +206,49 @@ class Mish(torch.nn.Module):
         :return: Output tensor of the same sime as the input
         """
         return x * torch.tanh(F.softplus(x))
+
+
+class Mixup(torch.nn.Module):
+    def __init__(self, beta_params):
+
+        """
+        The construction of a mixup module.
+
+        :param beta_params: One single value for the two parameters of a beta distribution
+        """
+
+        torch.nn.Module.__init__(self)
+        self.beta = beta_params
+        self.lamb = 1
+        self.permut = None
+        self.enable = True
+
+    def sample(self, batch_size):
+
+        """
+        Sample a point in a beta distribution to prepare the mixup
+
+        :param batch_size:
+        :return:
+        """
+
+        if self.beta > 0:
+            self.lamb = np.random.beta(self.beta, self.beta)
+        else:
+            self.lamb = 1
+
+        self.permut = torch.randperm(batch_size)
+
+        return self.lamb, self.permut
+
+    def forward(self, x):
+
+        """
+        Forward pass of the mixup module. This is here were we mix the data.
+
+        :return: Return mixed data if the network is in train mode and the module is enable.
+        """
+        if self.training and self.enable:
+            return self.lamb*x + (1 - self.lamb)*x[self.permut]
+        else:
+            return x
