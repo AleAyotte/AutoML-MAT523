@@ -209,35 +209,43 @@ class Mish(torch.nn.Module):
 
 
 class Mixup(torch.nn.Module):
-    def __init__(self, beta_params):
+    def __init__(self, beta_params, batch_size):
 
         """
-        The construction of a mixup module.
+        The constructor of a mixup module.
 
         :param beta_params: One single value for the two parameters of a beta distribution
+        :param batch_size: The batch size
         """
 
         torch.nn.Module.__init__(self)
         self.beta = beta_params
+        self.batch_size = batch_size
         self.lamb = 1
         self.permut = None
-        self.enable = True
+        self.enable = False
 
-    def sample(self, batch_size):
+    def sample(self):
 
         """
         Sample a point in a beta distribution to prepare the mixup
-
-        :param batch_size:
-        :return:
         """
 
         if self.beta > 0:
+            # We activate the module and we sample a value in his beta distribution
+            self.enable = True
             self.lamb = np.random.beta(self.beta, self.beta)
         else:
             self.lamb = 1
 
-        self.permut = torch.randperm(batch_size)
+        self.permut = torch.randperm(self.batch_size)
+
+    def get_mix_params(self):
+        """
+
+        :return: The constant that will be use to mixup the data for the next iteration and a list of index that
+                 represents the permutation used for the mixing process.
+        """
 
         return self.lamb, self.permut
 
