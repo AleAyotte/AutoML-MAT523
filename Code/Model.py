@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import torch
 import Module as Module
 import time
+import random
 from sklearn.model_selection import train_test_split
 from enum import Enum, unique
 
@@ -1161,7 +1162,7 @@ class ResNet(Cnn):
             # We adding a mixup module.
             if res_config[it, 2] != 0:
                 self.mixup_index.append(len(conv_list))
-                conv_list.extend([Module.Mixup(res_config[it, 2])])
+                conv_list.extend([Module.Mixup(res_config[it, 2], self.hparams['b_size'])])
 
             conv_list.extend([res_module(f_in, res_config[it, 1], self.hparams["activation"],
                                          twice=(it != 0), subsample=(it != 0))])
@@ -1224,6 +1225,139 @@ class ResNet(Cnn):
         conv_out = self.conv(x)
         output = self.fc(conv_out.view(-1, self.num_flat_features))
         return output
+
+    def mixup_criterion(self, pred, target, mixup_position=None):
+
+        """
+        Transform target into one hot vector and apply mixup on it
+
+        :param pred:
+        :param target:
+        :param mixup_position:
+        :return:
+        """
+
+        if mixup_position is not None:
+            lamb, index = self.conv[mixup_position].get_mix_params()
+            return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred[index], target)
+        else:
+            return self.criterion(pred, target)
+
+    def init_mixup(self):
+
+        """
+        Initialize the mixup modules
+
+        :return:
+        """
+
+        if len(self.mixup_index) > 0:
+
+            # We disable all mixup modules
+            for index in self.mixup_index:
+                self.conv[index].enable = False
+
+            # We select randomly a mixup module and we activate him
+            layer = self.mixup_index[random.randint(0, len(self.mixup_index) - 1)]
+            self.conv[layer].sample()
+
+            return layer
+
+        else:
+            return None
+
+    def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=True):
+
+        """
+        Train our model
+
+        :param X_train: NxD numpy array of the observations of the training set
+        :param t_train: Nx1 numpy array classes associated with each observations in the training set
+        :param dtset: A torch dataset which contain our train data points and labels
+        :param verbose: print the loss during training
+        :param gpu: True: Train the model on the gpu. False: Train the model on the cpu
+        """
+
+        train_loader, valid_loader = self.set_train_valid_loader(X_train, t_train, dtset)
+
+        # Indicator for early stopping
+        best_accuracy = 0
+        best_epoch = -1
+        num_epoch_no_change = 0
+        lr_decay_step = 0
+        learning_rate = self.hparams["lr"]
+
+        # Go in training to activate dropout
+        self.train()
+
+        self.apply(self.init_weights)
+
+        if gpu:
+            self.switch_device("gpu")
+
+        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
+                                     eps=self.hparams["eps"], amsgrad=False)
+        begin = time.time()
+
+        for epoch in range(self.num_epoch):
+            sum_loss = 0.0
+            it = 0
+
+            # ------------------------------------------------------------------------------------------
+            #                                       TRAINING PART
+            # ------------------------------------------------------------------------------------------
+            for step, data in enumerate(train_loader, 0):
+                features, labels = data[0].to(self.device_), data[1].to(self.device_)
+
+                optimizer.zero_grad()
+                self.init_mixup()
+
+                # training step
+                pred = self(features)
+                loss = self.mixup_criterion(pred, labels)
+                loss.backward()
+                optimizer.step()
+
+                # Save the loss
+                sum_loss += loss
+                it += 1
+
+            current_accuracy = self.accuracy(dt_loader=valid_loader)
+
+            if verbose:
+                end = time.time()
+                print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
+                      " best accuracy: {:.2f}%, best epoch {:d}:".format
+                      (epoch + 1, end - begin, sum_loss / it, current_accuracy * 100, best_accuracy * 100,
+                       best_epoch + 1))
+                begin = time.time()
+
+            # ------------------------------------------------------------------------------------------
+            #                                   EARLY STOPPING PART
+            # ------------------------------------------------------------------------------------------
+            if current_accuracy - best_accuracy >= self.tol:
+                best_accuracy = current_accuracy
+                best_epoch = epoch
+                num_epoch_no_change = 0
+
+                # We make a save of the model at his best epoch
+                self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
+
+            elif num_epoch_no_change < self.num_stop_epoch - 1:
+                num_epoch_no_change += 1
+
+            elif lr_decay_step < self.num_lr_decay:
+                lr_decay_step += 1
+                learning_rate /= self.hparams["lr_decay_rate"]
+                optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
+                                             eps=self.hparams["eps"], amsgrad=False)
+                num_epoch_no_change = 0
+
+            else:
+                break
+
+        # We restore the weight of the model at his best epoch
+        self.restore()
 
 
 class SimpleResNet(ResNet):
@@ -1294,7 +1428,9 @@ class SimpleResNet(ResNet):
         Cnn.set_hyperparameters(self, hyperparams)
 
         # We update the residual layer configuration.
-        self.res_config = np.array([[self.hparams['num_res'], 3] for _ in range(3)])
+        self.res_config = np.array([[self.hparams['num_res'], 3, self.hparams['mixup_0']],
+                                    [self.hparams['num_res'], 3, self.hparams['mixup_1']],
+                                    [self.hparams['num_res'], 3, self.hparams['mixup_2']]])
 
         self.conv = self.fc = self.out_layer = None
         self.num_flat_features = 0
