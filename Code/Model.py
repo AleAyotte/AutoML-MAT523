@@ -427,8 +427,8 @@ class MLP(Model):
 
         # We compute the hidden layer sizes parameter to fit with sklearn MLP while removing hln and ls
         # hyper-parameters from the dictionary
-        hidden_layers_number = hps.pop('hidden_layers_number', self.HP_space['hidden_layers_number'].value)
-        layers_size = hps.pop('layers_size', self.HP_space['layers_size'].value)
+        hidden_layers_number = hps.pop('hidden_layers_number', self.HP_space['hidden_layers_number'].value[0])
+        layers_size = hps.pop('layers_size', self.HP_space['layers_size'].value[0])
         hidden_layer_sizes = tuple([layers_size]*hidden_layers_number)
 
         # We add hidden_layer_sizes to the dict
