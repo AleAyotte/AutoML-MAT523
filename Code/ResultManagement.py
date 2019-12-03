@@ -174,7 +174,7 @@ class ExperimentAnalyst:
 
         f.write("Number of iterations : %g \n\n" % len(self.accuracy_history))
         f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
-        f.write("Best hyper-parameters found : %s" % str(self.best_hyperparameters))
+        f.write("Best hyper-parameters found : %s \n\n" % str(self.best_hyperparameters))
         f.write("Accuracy with test data set : %g" % test_accuracy)
 
         # We close the file
