@@ -102,7 +102,7 @@ class ExperimentAnalyst:
             folders_name.append(self.method_type)
 
         # We create all folder expected in the folder Results (if they don't already exist)
-        for folder_name in [experiment_title, self.tuning_method]:
+        for folder_name in folders_name:
             path = os.path.join(path, folder_name.upper(), '')
             self.create_folder(path)
 
