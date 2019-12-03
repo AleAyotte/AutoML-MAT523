@@ -3,9 +3,9 @@
     @Author:            Nicolas Raymond
     @Creation Date:     02/12/2019
     @Last modification: 02/12/2019
-    @Description:       For this first experiment, we will evaluate the performance of all hyper-parameter optimization
+    @Description:       For this experiment, we will evaluate the performance of all hyper-parameter optimization
                         methods implemented in a simple context with a fixed budget of 500 evaluations. More precisely,
-                        considering Iris data set classification problem (with 3 classes),
+                        considering Iris data set classification problem (150 instances, 4 attributes, 3 classes),
                         will we initialize a Sklearn MLP with 4 hidden layers of 20 neurons with default parameter and
                         try to find the best values for alpha (L2 penalty (regularization term) parameter),
                         learning rate init (initial learning rate used), beta1  (exponential decay rate for estimates of
@@ -30,7 +30,7 @@ import DataManager as dm
 import Model as mod
 from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
 
-# We generate data for our tests and two global variables for all test
+# We generate data for our tests and global variables for all tests
 x_train, t_train, x_test, t_test = dm.load_iris_dataset(random_state=42)
 dataset = 'Iris'
 train_size = len(x_train)
