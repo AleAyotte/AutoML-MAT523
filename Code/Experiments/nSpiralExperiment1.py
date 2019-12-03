@@ -16,9 +16,15 @@
 """
 
 # Import code needed
+import sys
 import os
 from numpy import linspace
 import pickle
+
+
+# Append path of module to sys and import module
+module_path = os.path.dirname(os.getcwd())
+sys.path.append(module_path)
 import DataManager as dm
 import Model as mod
 from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
