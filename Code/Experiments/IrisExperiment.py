@@ -4,7 +4,7 @@
     @Creation Date:     02/12/2019
     @Last modification: 02/12/2019
     @Description:       For this experiment, we will evaluate the performance of all hyper-parameter optimization
-                        methods implemented in a simple context with a fixed budget of 500 evaluations. More precisely,
+                        methods implemented in a simple context with a fixed budget of 250 evaluations. More precisely,
                         considering Iris data set classification problem (150 instances, 4 attributes, 3 classes),
                         will we initialize a Sklearn MLP with 4 hidden layers of 20 neurons with default parameter and
                         try to find the best values for alpha (L2 penalty (regularization term) parameter),
@@ -35,7 +35,7 @@ x_train, t_train, x_test, t_test = dm.load_iris_dataset(random_state=42)
 dataset = 'Iris'
 train_size = len(x_train)
 nb_cross_validation = 4
-nb_evals = 500
+nb_evals = 250
 
 # We initialize an MLP with default hyper-parameters and 3 hidden layers of 20 neurons to classify our data
 # and test its performance on both training and test data sets
@@ -148,7 +148,7 @@ mlp_for_gs = pickle.loads(save)
 gs_tuner = HPtuner(mlp_for_gs, 'grid_search')
 gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
                            'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
-                           'batch_size': DiscreteDomain([100, 200]),
+                           'batch_size': DiscreteDomain([200]),
                            'hidden_layers_number': DiscreteDomain([1, 5, 10, 15, 20]),
                            'layers_size': DiscreteDomain([20, 50])})
 
