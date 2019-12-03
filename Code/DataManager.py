@@ -8,7 +8,7 @@
 
 """
 
-from sklearn.datasets import make_moons, make_circles, load_iris, load_wine
+from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import numpy as np
@@ -25,6 +25,7 @@ import torch.utils.data as utils
 class DataGenerator:
 
     def __init__(self, train, test, model_name):
+
         """
         Class that generates training and testing samples from sklearn datasets.
 
@@ -38,6 +39,7 @@ class DataGenerator:
 
     @staticmethod
     def polar_to_cart(radius, angle):
+
         """
         Convert coordinates from polar to cartesian coordinates
 
@@ -51,7 +53,9 @@ class DataGenerator:
         return x, y
 
     def n_spiral(self, nb_data, noise, num_class):
+
         """
+        Generates random training and testing sample with spiral shapes.
 
         :param nb_data: Number of data points that we want to generates
         :param noise: The standard deviation of the Gaussian noise added to the data
@@ -80,6 +84,7 @@ class DataGenerator:
         return features, labels.astype(dtype='int32')
 
     def generate_data(self, noise=0, num_class=2, seed=None):
+
         """
         Generates random training and testing sample according to the model name
 
@@ -114,8 +119,9 @@ class DataGenerator:
 
 
 def create_dataloader(features, labels, b_size, shuffle=False):
+
     """
-    Transform a n dimensional numpy array of features and a numpy array of labels into ONE data loader
+    Transforms a n dimensional numpy array of features and a numpy array of labels into ONE data loader
 
     :param features: A n dimensional numpy array that contain features of each data points
     :param labels: A numpy array that represent the correspondent labels of each data points
@@ -132,8 +138,9 @@ def create_dataloader(features, labels, b_size, shuffle=False):
 
 
 def dataset_to_loader(dataset, b_size=12, shuffle=False):
+
     """
-    Transform a torch dataset into a torch dataloader who provide an iterable over the dataset
+    Transforms a torch dataset into a torch dataloader who provide an iterable over the dataset
 
     :param dataset: A torch dataset
     :param b_size: The batch size
@@ -146,8 +153,9 @@ def dataset_to_loader(dataset, b_size=12, shuffle=False):
 
 
 def validation_split(features=None, labels=None, dtset=None, valid_size=0.2, random_state=None):
+
     """
-    Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
+    Splits a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
     arrays respectively.
 
     :param features: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
@@ -177,8 +185,9 @@ def validation_split(features=None, labels=None, dtset=None, valid_size=0.2, ran
 
 
 def load_cifar10():
+
     """
-    Load the CIFAR10 dataset using pytorch
+    Loads the CIFAR10 dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -200,8 +209,9 @@ def load_cifar10():
 
 
 def load_cifar100():
+
     """
-    Load the CIFAR100 dataset using pytorch
+    Loads the CIFAR100 dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR100 dataset as pytorch Dataset
@@ -223,8 +233,9 @@ def load_cifar100():
 
 
 def load_svhn():
+
     """
-    Load the SVHN dataset using pytorch
+    Loads the SVHN dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -246,8 +257,9 @@ def load_svhn():
 
 
 def load_stl10():
+
     """
-    Load the SVHN dataset using pytorch
+    Loads the SVHN dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -268,8 +280,9 @@ def load_stl10():
 
 
 def load_mnist():
+
     """
-    Load the MNIST dataset using pytorch and normalize it using is
+    Loads the MNIST dataset using pytorch and normalize it using is
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -282,8 +295,9 @@ def load_mnist():
 
 
 def load_csv(path, label_col, test_split=0.2):
+
     """
-    Load a dataset from a csv file
+    Loads a dataset from a csv file
 
     :param path: The path of the csv file.
     :param label_col: The number of the column that contain the labels. (First column is 0)
@@ -316,7 +330,8 @@ def load_csv(path, label_col, test_split=0.2):
 def load_iris_dataset(scaled=True, test_split=0.2, random_state=None):
 
     """
-    Load iris classification dataset offered by sklearn.
+    Load iris classification dataset offered by sklearn
+    https://scikit-learn.org/stable/datasets/index.html#iris-dataset
 
     :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
     """
@@ -333,9 +348,27 @@ def load_iris_dataset(scaled=True, test_split=0.2, random_state=None):
     return x_train, t_train, x_test, t_test
 
 
-def plot_data(data, target):
+def load_forest_covertypes_dataset(test_split=0.2, random_state=None):
+
     """
-    Show a two dimensional dataset in a chart.
+    Loads forest covertypes dataset offered by sklearn
+    https://scikit-learn.org/stable/datasets/index.html#forest-covertypes
+
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
+    """
+    data = fetch_covtype()
+    X = data['data']
+    t = data['target']
+
+    x_train, x_test, t_train, t_test = validation_split(X, t, valid_size=test_split, random_state=random_state)
+
+    return x_train, t_train, x_test, t_test
+
+
+def plot_data(data, target):
+
+    """
+    Shows a two dimensional dataset in a chart.
 
     :param data: A numpy array of dimension Nx2, that represents the coordinates of each data points.
     :param target: A numpy array of integer value that represents the data points labels
