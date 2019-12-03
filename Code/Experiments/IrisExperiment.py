@@ -60,7 +60,7 @@ rs_tuner = HPtuner(mlp_for_rs, 'random_search')
 rs_tuner.set_search_space({'alpha': ContinuousDomain(-8, 0, log_scaled=True),
                            'learning_rate_init': ContinuousDomain(-8, 0, log_scaled=True),
                            'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int))),
-                           'hidden_layers_size': DiscreteDomain(range(1, 21)),
+                           'hidden_layers_number': DiscreteDomain(range(1, 21)),
                            'layers_size': DiscreteDomain(range(5, 51))})
 
 # We execute the tuning and save the results
@@ -81,7 +81,7 @@ tpe_tuner = HPtuner(mlp_for_tpe, 'tpe')
 tpe_tuner.set_search_space({'alpha': ContinuousDomain(-8, 0, log_scaled=True),
                             'learning_rate_init': ContinuousDomain(-8, 0, log_scaled=True),
                             'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int))),
-                            'hidden_layers_size': DiscreteDomain(range(1, 21)),
+                            'hidden_layers_number': DiscreteDomain(range(1, 21)),
                             'layers_size': DiscreteDomain(range(5, 51))})
 
 # We execute the tuning and save the results
@@ -102,7 +102,7 @@ GP_tuner = HPtuner(mlp_for_GP, 'gaussian_process')
 GP_tuner.set_search_space({'alpha': ContinuousDomain(-8, 0, log_scaled=True),
                            'learning_rate_init': ContinuousDomain(-8, 0, log_scaled=True),
                            'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int))),
-                           'hidden_layers_size': DiscreteDomain(range(1, 21)),
+                           'hidden_layers_number': DiscreteDomain(range(1, 21)),
                            'layers_size': DiscreteDomain(range(5, 51))})
 
 # We execute the tuning using default parameter for GP
@@ -125,7 +125,7 @@ GP_tuner2 = HPtuner(mlp_for_GP2, 'gaussian_process')
 GP_tuner2.set_search_space({'alpha': ContinuousDomain(-8, 0, log_scaled=True),
                             'learning_rate_init': ContinuousDomain(-8, 0, log_scaled=True),
                             'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int))),
-                            'hidden_layers_size': DiscreteDomain(range(1, 21)),
+                            'hidden_layers_number': DiscreteDomain(range(1, 21)),
                             'layers_size': DiscreteDomain(range(5, 51))})
 
 # We execute the tuning using default parameter for GP except MPI acquisition
@@ -149,7 +149,7 @@ gs_tuner = HPtuner(mlp_for_gs, 'grid_search')
 gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
                            'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
                            'batch_size': DiscreteDomain([100, 200]),
-                           'hidden_layers_size': DiscreteDomain([1, 5, 10, 15, 20]),
+                           'hidden_layers_number': DiscreteDomain([1, 5, 10, 15, 20]),
                            'layers_size': DiscreteDomain([20, 50])})
 
 # We execute the tuning and save the results
