@@ -31,8 +31,8 @@ pool2 = np.array([4, 1, 1])  # Average pooling after the first convolution layer
 fc_nodes = None
 
 net = Model.SimpleResNet(num_classes=10, num_res=3, activation='relu', version=1, input_dim=input_size, lr=0.021457992,
-                         alpha=0.001149, eps=0.1, b_size=100, num_epoch=200, num_stop_epoch=20, lr_decay_rate=10,
-                         num_lr_decay=4, valid_size=0.05, tol=0.004, save_path="checkpoint.pth")
+                         alpha=0.001149, eps=0.1, b_size=100, num_epoch=150, num_stop_epoch=15, lr_decay_rate=10,
+                         num_lr_decay=4, valid_size=0.03, tol=0.004, save_path="checkpoint.pth")
 
 # print(net)
 
