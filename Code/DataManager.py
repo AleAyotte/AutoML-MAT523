@@ -11,6 +11,7 @@
 from sklearn.datasets import make_moons
 from sklearn.datasets import make_circles
 from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 import numpy as np
 import pandas as pd
 import math
@@ -289,12 +290,27 @@ def load_csv(path, label_col, test_split=0.2):
     :return: train and valid features as numpy arrays and train and valid labels as numpy arrays
     """
     data_csv = pd.read_csv(path).values
+
     features = np.delete(data_csv, label_col, axis=1)
+    # features = np.delete(np.delete(data_csv, label_col, axis=1), 0, axis=1)
     labels = data_csv[:, label_col]
 
-    normalized_features = (features - features.mean(axis=0)) / features.std(axis=0)
+    # Scaling features
+    scaler = preprocessing.StandardScaler()
+    scaler.fit(features)
+    normalized_features = scaler.transform(features)
 
-    return validation_split(normalized_features, labels, valid_size=test_split)
+
+    # Encode the labels
+    le = preprocessing.LabelEncoder()
+    le.fit(labels)
+    encoded_labels = le.transform(labels)
+
+    if test_split > 0:
+        return validation_split(normalized_features, encoded_labels, valid_size=test_split)
+
+    else:
+        return normalized_features, encoded_labels
 
 
 def plot_data(data, target):
