@@ -8,8 +8,7 @@
 
 """
 
-from sklearn.datasets import make_moons
-from sklearn.datasets import make_circles
+from sklearn.datasets import make_moons, make_circles, load_iris, load_wine
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import numpy as np
@@ -87,7 +86,7 @@ class DataGenerator:
         :param noise: The standard deviation of the Gaussian noise added to the data
         :param num_class: Number of classes, only for the nSpiral model
         :param seed: Set the seed of the numpy random state
-        :return: 4 numpy array for training features, training labels, testing features and testing labels respectively
+        :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
         """
 
         np.random.seed(seed=seed)
@@ -146,7 +145,7 @@ def dataset_to_loader(dataset, b_size=12, shuffle=False):
     return data_loader
 
 
-def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
+def validation_split(features=None, labels=None, dtset=None, valid_size=0.2, random_state=None):
     """
     Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
     arrays respectively.
@@ -155,6 +154,7 @@ def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
     :param labels: Nx1 numpy array of classes associated with each observation
     :param dtset: A torch dataset which contain our train data points and labels
     :param valid_size: Proportion of the dataset that will be use as validation data
+    :param random_state: Seed used by the random number generator
     :return: train and valid features as numpy arrays and train and valid labels as numpy arrays if features and labels
              numpy arrays are given but no torch dataset. Train and valid torch datasets if a torch dataset is given.
     """
@@ -165,7 +165,8 @@ def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
                 features is None, labels is None, dtset is None))
         else:
             # x_train, x_valid, t_train, t_valid
-            return train_test_split(features, labels, test_size=valid_size)
+            return train_test_split(features, labels, test_size=valid_size, random_state=random_state)
+
     else:
         num_data = len(dtset)
         num_valid = math.floor(num_data * valid_size)
@@ -300,7 +301,6 @@ def load_csv(path, label_col, test_split=0.2):
     scaler.fit(features)
     normalized_features = scaler.transform(features)
 
-
     # Encode the labels
     le = preprocessing.LabelEncoder()
     le.fit(labels)
@@ -311,6 +311,26 @@ def load_csv(path, label_col, test_split=0.2):
 
     else:
         return normalized_features, encoded_labels
+
+
+def load_iris_dataset(scaled=True, test_split=0.2, random_state=None):
+
+    """
+    Load iris classification dataset offered by sklearn.
+
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
+    """
+    data = load_iris()
+    X = data['data']
+
+    if scaled:
+        X = preprocessing.scale(X)
+
+    t = data['target']
+
+    x_train, x_test, t_train, t_test = validation_split(X, t, valid_size=test_split, random_state=random_state)
+
+    return x_train, t_train, x_test, t_test
 
 
 def plot_data(data, target):
