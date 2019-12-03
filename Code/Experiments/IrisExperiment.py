@@ -34,7 +34,7 @@ from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
 x_train, t_train, x_test, t_test = dm.load_iris_dataset(random_state=42)
 dataset = 'Iris'
 train_size = len(x_train)
-nb_cross_validation = 2
+nb_cross_validation = 4
 nb_evals = 500
 
 # We initialize an MLP with default hyper-parameters and 3 hidden layers of 20 neurons to classify our data
