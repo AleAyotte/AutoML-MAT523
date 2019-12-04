@@ -17,8 +17,9 @@ import numpy as np
 d_train, d_test = Dm.load_cifar10()
 input_size = np.array([32, 32, 3])
 results_path = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-results_path = os.path.join(results_path, '')
+results_path = os.path.join(results_path, 'Results', '')
 experiment_name = 'CF10Exp1'
+print(results_path)
 
 # ------------------------------------------------------------------------------------------
 #                                           RESNET
@@ -35,7 +36,7 @@ net = Model.SimpleResNet(num_classes=10, num_res=3, activation='relu', version=1
                          num_lr_decay=4, valid_size=0.05, tol=0.004, save_path="checkpoint.pth")
 
 print(net)
-
+"""
 # ------------------------------------------------------------------------------------------
 #                                       RANDOM SEARCH
 # ------------------------------------------------------------------------------------------
@@ -90,7 +91,7 @@ results.save_all_results(results_path, experiment_name, "CIFAR10", 50000, score)
 # ------------------------------------------------------------------------------------------
 #                                   GAUSSIAN PROCESS (MPI)
 # ------------------------------------------------------------------------------------------
-
+"""
 test = 'gaussian_process'
 
 tune = HPtuner(net, test)
