@@ -4,7 +4,7 @@
     @Creation Date:     02/12/2019
     @Last modification: 02/12/2019
     @Description:       For this experiment, we will evaluate the performance of all hyper-parameter optimization
-                        methods implemented in a simple context with a fixed budget of 500 evaluations. More precisely,
+                        methods implemented in a simple context with a fixed budget of 100 evaluations. More precisely,
                         considering Forest Covertypes data set classification problem (Sample size: 581012,
                         Dimensionality : 54, Classes : 7), will we initialize a Sklearn MLP with 4 hidden layers of 20
                         neurons with default parameter and try to find the best values for alpha
@@ -37,13 +37,14 @@ x_train, t_train, x_test, t_test = dm.load_forest_covertypes_dataset(random_stat
 dataset = 'ForestCovertypes'
 train_size = len(x_train)
 nb_cross_validation = 1
-nb_evals = 500
+nb_evals = 100
 
 # We initialize an MLP with default hyper-parameters and 3 hidden layers of 20 neurons to classify our data
 # and test its performance on both training and test data sets
 mlp = mod.MLP(hidden_layers_number=4, layers_size=20, max_iter=1000)
 mlp.fit(x_train, t_train)
 print(mlp.score(x_test, t_test))
+
 
 """
 Random search
@@ -148,11 +149,11 @@ print('\n\n GRID SEARCH \n\n')
 # We do a deep copy of our MLP for the test, initialize a tuner with the grid_search method and set our search space
 mlp_for_gs = pickle.loads(save)
 gs_tuner = HPtuner(mlp_for_gs, 'grid_search')
-gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
-                           'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
-                           'batch_size': DiscreteDomain([100, 200]),
-                           'hidden_layers_number': DiscreteDomain([1, 5, 10, 15, 20]),
-                           'layers_size': DiscreteDomain([20, 50])})
+gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
+                           'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
+                           'batch_size': DiscreteDomain([200]),
+                           'hidden_layers_number': DiscreteDomain([10, 20]),
+                           'layers_size': DiscreteDomain([25, 30])})
 
 # We execute the tuning and save the results
 gs_results = gs_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
