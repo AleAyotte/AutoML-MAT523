@@ -102,7 +102,7 @@ class ExperimentAnalyst:
             folders_name.append(self.method_type)
 
         # We create all folder expected in the folder Results (if they don't already exist)
-        for folder_name in [experiment_title, self.tuning_method]:
+        for folder_name in folders_name:
             path = os.path.join(path, folder_name.upper(), '')
             self.create_folder(path)
 
@@ -174,8 +174,8 @@ class ExperimentAnalyst:
 
         f.write("Number of iterations : %g \n\n" % len(self.accuracy_history))
         f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
-        f.write("Best hyper-parameters found : %s" % str(self.best_hyperparameters))
-        f.write("Accuracy with test data set : %g" % test_accuracy)
+        f.write("Best hyper-parameters found : %s \n\n" % str(self.best_hyperparameters))
+        f.write("Test accuracy : %g" % test_accuracy)
 
         # We close the file
         f.close()

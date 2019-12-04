@@ -8,9 +8,9 @@
 
 """
 
-from sklearn.datasets import make_moons
-from sklearn.datasets import make_circles
+from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype
 from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 import numpy as np
 import pandas as pd
 import math
@@ -25,6 +25,7 @@ import torch.utils.data as utils
 class DataGenerator:
 
     def __init__(self, train, test, model_name):
+
         """
         Class that generates training and testing samples from sklearn datasets.
 
@@ -38,6 +39,7 @@ class DataGenerator:
 
     @staticmethod
     def polar_to_cart(radius, angle):
+
         """
         Convert coordinates from polar to cartesian coordinates
 
@@ -51,7 +53,9 @@ class DataGenerator:
         return x, y
 
     def n_spiral(self, nb_data, noise, num_class):
+
         """
+        Generates random training and testing sample with spiral shapes.
 
         :param nb_data: Number of data points that we want to generates
         :param noise: The standard deviation of the Gaussian noise added to the data
@@ -80,13 +84,14 @@ class DataGenerator:
         return features, labels.astype(dtype='int32')
 
     def generate_data(self, noise=0, num_class=2, seed=None):
+
         """
         Generates random training and testing sample according to the model name
 
         :param noise: The standard deviation of the Gaussian noise added to the data
         :param num_class: Number of classes, only for the nSpiral model
         :param seed: Set the seed of the numpy random state
-        :return: 4 numpy array for training features, training labels, testing features and testing labels respectively
+        :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
         """
 
         np.random.seed(seed=seed)
@@ -114,8 +119,9 @@ class DataGenerator:
 
 
 def create_dataloader(features, labels, b_size, shuffle=False):
+
     """
-    Transform a n dimensional numpy array of features and a numpy array of labels into ONE data loader
+    Transforms a n dimensional numpy array of features and a numpy array of labels into ONE data loader
 
     :param features: A n dimensional numpy array that contain features of each data points
     :param labels: A numpy array that represent the correspondent labels of each data points
@@ -132,8 +138,9 @@ def create_dataloader(features, labels, b_size, shuffle=False):
 
 
 def dataset_to_loader(dataset, b_size=12, shuffle=False):
+
     """
-    Transform a torch dataset into a torch dataloader who provide an iterable over the dataset
+    Transforms a torch dataset into a torch dataloader who provide an iterable over the dataset
 
     :param dataset: A torch dataset
     :param b_size: The batch size
@@ -145,15 +152,17 @@ def dataset_to_loader(dataset, b_size=12, shuffle=False):
     return data_loader
 
 
-def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
+def validation_split(features=None, labels=None, dtset=None, valid_size=0.2, random_state=None):
+
     """
-    Split a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
+    Splits a torch dataset or features and labels numpy arrays into two dataset or two features and two labels numpy
     arrays respectively.
 
     :param features: NxD numpy array of observations {N : nb of obs, D : nb of dimensions}
     :param labels: Nx1 numpy array of classes associated with each observation
     :param dtset: A torch dataset which contain our train data points and labels
     :param valid_size: Proportion of the dataset that will be use as validation data
+    :param random_state: Seed used by the random number generator
     :return: train and valid features as numpy arrays and train and valid labels as numpy arrays if features and labels
              numpy arrays are given but no torch dataset. Train and valid torch datasets if a torch dataset is given.
     """
@@ -164,7 +173,8 @@ def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
                 features is None, labels is None, dtset is None))
         else:
             # x_train, x_valid, t_train, t_valid
-            return train_test_split(features, labels, test_size=valid_size)
+            return train_test_split(features, labels, test_size=valid_size, random_state=random_state)
+
     else:
         num_data = len(dtset)
         num_valid = math.floor(num_data * valid_size)
@@ -175,8 +185,9 @@ def validation_split(features=None, labels=None, dtset=None, valid_size=0.2):
 
 
 def load_cifar10():
+
     """
-    Load the CIFAR10 dataset using pytorch
+    Loads the CIFAR10 dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -198,8 +209,9 @@ def load_cifar10():
 
 
 def load_cifar100():
+
     """
-    Load the CIFAR100 dataset using pytorch
+    Loads the CIFAR100 dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR100 dataset as pytorch Dataset
@@ -221,8 +233,9 @@ def load_cifar100():
 
 
 def load_svhn():
+
     """
-    Load the SVHN dataset using pytorch
+    Loads the SVHN dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -244,8 +257,9 @@ def load_svhn():
 
 
 def load_stl10():
+
     """
-    Load the SVHN dataset using pytorch
+    Loads the SVHN dataset using pytorch
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -266,8 +280,9 @@ def load_stl10():
 
 
 def load_mnist():
+
     """
-    Load the MNIST dataset using pytorch and normalize it using is
+    Loads the MNIST dataset using pytorch and normalize it using is
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
     :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
@@ -280,8 +295,9 @@ def load_mnist():
 
 
 def load_csv(path, label_col, test_split=0.2):
+
     """
-    Load a dataset from a csv file
+    Loads a dataset from a csv file
 
     :param path: The path of the csv file.
     :param label_col: The number of the column that contain the labels. (First column is 0)
@@ -289,17 +305,70 @@ def load_csv(path, label_col, test_split=0.2):
     :return: train and valid features as numpy arrays and train and valid labels as numpy arrays
     """
     data_csv = pd.read_csv(path).values
+
     features = np.delete(data_csv, label_col, axis=1)
+    # features = np.delete(np.delete(data_csv, label_col, axis=1), 0, axis=1)
     labels = data_csv[:, label_col]
 
-    normalized_features = (features - features.mean(axis=0)) / features.std(axis=0)
+    # Scaling features
+    scaler = preprocessing.StandardScaler()
+    scaler.fit(features)
+    normalized_features = scaler.transform(features)
 
-    return validation_split(normalized_features, labels, valid_size=test_split)
+    # Encode the labels
+    le = preprocessing.LabelEncoder()
+    le.fit(labels)
+    encoded_labels = le.transform(labels)
+
+    if test_split > 0:
+        return validation_split(normalized_features, encoded_labels, valid_size=test_split)
+
+    else:
+        return normalized_features, encoded_labels
+
+
+def load_iris_dataset(scaled=True, test_split=0.2, random_state=None):
+
+    """
+    Load iris classification dataset offered by sklearn
+    https://scikit-learn.org/stable/datasets/index.html#iris-dataset
+
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
+    """
+    data = load_iris()
+    X = data['data']
+
+    if scaled:
+        X = preprocessing.scale(X)
+
+    t = data['target']
+
+    x_train, x_test, t_train, t_test = validation_split(X, t, valid_size=test_split, random_state=random_state)
+
+    return x_train, t_train, x_test, t_test
+
+
+def load_forest_covertypes_dataset(test_split=0.2, random_state=None):
+
+    """
+    Loads forest covertypes dataset offered by sklearn
+    https://scikit-learn.org/stable/datasets/index.html#forest-covertypes
+
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
+    """
+    data = fetch_covtype()
+    X = data['data']
+    t = data['target']
+
+    x_train, x_test, t_train, t_test = validation_split(X, t, valid_size=test_split, random_state=random_state)
+
+    return x_train, t_train, x_test, t_test
 
 
 def plot_data(data, target):
+
     """
-    Show a two dimensional dataset in a chart.
+    Shows a two dimensional dataset in a chart.
 
     :param data: A numpy array of dimension Nx2, that represents the coordinates of each data points.
     :param target: A numpy array of integer value that represents the data points labels
