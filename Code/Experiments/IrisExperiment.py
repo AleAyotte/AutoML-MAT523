@@ -37,6 +37,7 @@ train_size = len(x_train)
 nb_cross_validation = 4
 nb_evals = 250
 
+
 # We initialize an MLP with default hyper-parameters and 3 hidden layers of 20 neurons to classify our data
 # and test its performance on both training and test data sets
 mlp = mod.MLP(hidden_layers_number=4, layers_size=20, max_iter=1000)
@@ -54,6 +55,7 @@ save = pickle.dumps(mlp)
 mlp_for_rs = pickle.loads(save)
 experiment_title = 'IrisClassification'
 results_path = os.path.join(os.path.dirname(module_path), 'Results')
+
 
 # We initialize a tuner with random search method and set our search space
 rs_tuner = HPtuner(mlp_for_rs, 'random_search')
@@ -146,8 +148,8 @@ print('\n\n GRID SEARCH \n\n')
 # We do a deep copy of our MLP for the test, initialize a tuner with the grid_search method and set our search space
 mlp_for_gs = pickle.loads(save)
 gs_tuner = HPtuner(mlp_for_gs, 'grid_search')
-gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
-                           'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5, dtype=int))),
+gs_tuner.set_search_space({'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
+                           'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
                            'batch_size': DiscreteDomain([200]),
                            'hidden_layers_number': DiscreteDomain([1, 5, 10, 15, 20]),
                            'layers_size': DiscreteDomain([20, 50])})
