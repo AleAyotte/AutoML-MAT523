@@ -549,14 +549,14 @@ class GPyOptSearchSpace(SearchSpace):
             # If the hyper-parameter is categorical, we change strings for integer.
             elif self[hyperparam]['type'] == 'categorical':
 
-                # We save the possible values of the categorical variables in forms of string and also integers
+                # We save the possible values of the categorical variables in forms of strings and also integers
                 choices = list(self[hyperparam]['domain'])
                 integer_encoding = range(domain_length)
 
                 # We change the domain of our space for the tuple with all values (int) possible
                 self[hyperparam]['domain'] = integer_encoding
 
-                # We save the choice associate with each integer in our dictionary
+                # We save the choices associated with each integer in our dictionary
                 for i in integer_encoding:
                     self.categorical_vars[hyperparam][i] = choices[i]
 
