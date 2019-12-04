@@ -310,7 +310,7 @@ class HPtuner:
 
             # We start a loading bar
             pbar = tqdm(total=n_evals, postfix='best loss : ' +
-                                               str(round(1 - self.tuning_history.actual_best_accuracy, 6)))
+                                               str(round(1 - self.tuning_history.actual_best_accuracy, 10)))
 
             def loss(hyperparams):
 
@@ -338,7 +338,7 @@ class HPtuner:
 
                 # We update our tuning history and the loading bar
                 self.tuning_history.update(loss_value, hyperparams)
-                pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 6))
+                pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 10))
                 pbar.update()
 
                 return loss_value
