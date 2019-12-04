@@ -500,15 +500,18 @@ class GPyOptSearchSpace(SearchSpace):
         """
 
         space = {}
+        self.categorical_vars = {}
 
         for hyperparam in model.HP_space:
 
             hp_initial_value = model.HP_space[hyperparam].value[0]
 
-            if model.HP_space[hyperparam].type == HPtype.categorical:
+            if model.HP_space[hyperparam].type.value == HPtype.categorical.value:
 
                 space[hyperparam] = {'name': hyperparam, 'type': 'categorical',
                                      'domain': (hp_initial_value,), 'dimensionality': 1}
+
+                self.categorical_vars[hyperparam] = {}
 
             else:
                 space[hyperparam] = {'name': hyperparam, 'type': 'discrete',
@@ -535,8 +538,27 @@ class GPyOptSearchSpace(SearchSpace):
         """
 
         for hyperparam in list(self.space.keys()):
-            if len(self[hyperparam]['domain']) == 1:
+
+            # We save the length of the domain (must be at least 2)
+            domain_length = len(self[hyperparam]['domain'])
+
+            # If there's no search to be done with the hyper-parameter we do not consider it anymore in the tuning
+            if domain_length == 1:
                 self.space.pop(hyperparam)
+
+            # If the hyper-parameter is categorical, we change strings for integer.
+            elif self[hyperparam]['type'] == 'categorical':
+
+                # We save the possible values of the categorical variables in forms of strings and also integers
+                choices = list(self[hyperparam]['domain'])
+                integer_encoding = range(domain_length)
+
+                # We change the domain of our space for the tuple with all values (int) possible
+                self[hyperparam]['domain'] = integer_encoding
+
+                # We save the choices associated with each integer in our dictionary
+                for i in integer_encoding:
+                    self.categorical_vars[hyperparam][i] = choices[i]
 
         self.hyperparameters_to_tune = list(self.space.keys())
         self.space = list(self.space.values())
@@ -557,10 +579,19 @@ class GPyOptSearchSpace(SearchSpace):
         hp_dict, i = {}, 0
 
         # We extract hyper-parameters' values
-        hyper_paramater_values = hyper_paramater_values[0]
+        hyper_parameter_values = hyper_paramater_values[0]
 
+        # We build the dict and transform back categorical variables
         for hyperparam in self.hyperparameters_to_tune:
-            hp_dict[hyperparam] = hyper_paramater_values[i]
+
+            hp_value = hyper_parameter_values[i]  # Represents a dictionary key for categorical vars
+
+            if hyperparam in self.categorical_vars:
+                hp_dict[hyperparam] = self.categorical_vars[hyperparam][hp_value]
+
+            else:
+                hp_dict[hyperparam] = hp_value
+
             i += 1
 
         return hp_dict
