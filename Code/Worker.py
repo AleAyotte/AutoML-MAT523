@@ -45,26 +45,9 @@ class MyWorker(Worker):
         time.sleep(self.sleep_interval)
 
         return ({
-            'loss': res,  # this is the a mandatory field to run hyperband
+            'loss': res,  # this is a mandatory field to run hyperband
             'info': config  # can be used for any user-defined information - also mandatory
         })
-
-    @staticmethod
-    def get_configspace(space):
-
-        """
-        Converts the dictionnary of CSH object to a proper ConfigurationSpace accepted by HpBandSter.
-        """
-
-        # Initialization of configuration space
-        cs = CS.ConfigurationSpace()
-
-        # We extract CSH object from the dictionnary and put it in a list
-        if len(space) != 0:
-            space = list(space.values())
-            cs.add_hyperparameters(space)
-
-        return (cs)
 
 
 def start_hpbandster_process(method, configspace, loss):
@@ -93,7 +76,7 @@ def start_hpbandster_process(method, configspace, loss):
 
     if method == 'BOHB':
 
-        optimizer = BOHB(configspace=w.get_configspace(configspace),
+        optimizer = BOHB(configspace=configspace,
                          run_id=method,
                          nameserver=ns_host,
                          nameserver_port=ns_port,
@@ -101,7 +84,7 @@ def start_hpbandster_process(method, configspace, loss):
                          )
     else:
 
-        optimizer = HyperBand(configspace=w.get_configspace(configspace),
+        optimizer = HyperBand(configspace=configspace,
                               run_id=method,
                               nameserver=ns_host,
                               nameserver_port=ns_port,
