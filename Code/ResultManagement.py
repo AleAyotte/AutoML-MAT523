@@ -81,7 +81,7 @@ class ExperimentAnalyst:
 
         return plt
 
-    def save_all_results(self, path, experiment_title, dataset_name, training_size, noise, test_accuracy):
+    def save_all_results(self, path, experiment_title, dataset_name, training_size, test_accuracy, noise=None):
 
         """
         Saves all results saved by the ExperimentAnalyst
@@ -102,7 +102,7 @@ class ExperimentAnalyst:
             folders_name.append(self.method_type)
 
         # We create all folder expected in the folder Results (if they don't already exist)
-        for folder_name in [experiment_title, self.tuning_method]:
+        for folder_name in folders_name:
             path = os.path.join(path, folder_name.upper(), '')
             self.create_folder(path)
 
@@ -174,8 +174,8 @@ class ExperimentAnalyst:
 
         f.write("Number of iterations : %g \n\n" % len(self.accuracy_history))
         f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
-        f.write("Best hyper-parameters found : %s" % str(self.best_hyperparameters))
-        f.write("Accuracy with test data set : %g" % test_accuracy)
+        f.write("Best hyper-parameters found : %s \n\n" % str(self.best_hyperparameters))
+        f.write("Test accuracy : %g" % test_accuracy)
 
         # We close the file
         f.close()
