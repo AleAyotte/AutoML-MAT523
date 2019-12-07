@@ -1,0 +1,19 @@
+Experiment title: BreastCancerClassification 
+
+Model name : MLP 
+
+Nbr. of cross validation done in each iteration : 4 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : Breast_Cancer_Wisconsin 
+
+Size of training set : 455 
+
+Number of iterations : 250 
+
+Best accuracy obtained in tuning : 0.989011 
+
+Best hyper-parameters found : {'activation': 'relu', 'alpha': 7.537231835634854e-07, 'batch_size': 300, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layers_number': 17, 'layers_size': 53, 'learning_rate_init': 0.001159177411786697, 'solver': 'adam'} 
+
+Test accuracy : 0.964912
