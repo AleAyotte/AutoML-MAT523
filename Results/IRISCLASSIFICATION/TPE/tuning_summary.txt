@@ -1,0 +1,19 @@
+Experiment title: IrisClassification 
+
+Model name : MLP 
+
+Nbr. of cross validation done in each iteration : 4 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : Iris 
+
+Size of training set : 120 
+
+Number of iterations : 250 
+
+Best accuracy obtained in tuning : 0.979167 
+
+Best hyper-parameters found : {'activation': 'relu', 'alpha': 1.9237511422096582e-07, 'batch_size': 50, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layers_number': 17, 'layers_size': 21, 'learning_rate_init': 0.00022869194635722923, 'solver': 'adam'} 
+
+Test accuracy : 0.933333
