@@ -40,6 +40,9 @@ class HPtuner:
         if method not in method_list:
             raise Exception('No such method "{}" implemented for HPtuner'.format(method))
 
+        # We change our model maximal number of epochs to do in training
+        model.set_max_epoch(max_budget_per_config)
+
         self.model = model
         self.method = method
         self.search_space = self.search_space_ignition(method, model)
@@ -199,7 +202,6 @@ class HPtuner:
         :param X: NxD numpy array of observations {N : nb of obs; D : nb of dimensions}
         :param t: Nx1 numpy array of target values associated with each observation
         :param dtset: A torch dataset which contain our train data points and labels
-        :param n_evals: Number of evaluations to do. Considered for every method except 'grid_search'
         :param nb_cross_validation: Number of cross validation done for loss calculation
         :param valid_size: Percentage of training data used as validation data
         """
@@ -230,7 +232,7 @@ class HPtuner:
             self.tpe(loss)
 
         elif self.method == 'gaussian_process':
-            self.gaussian_process(loss, n_evals, **kwargs)
+            self.gaussian_process(loss, **kwargs)
 
         else:
             raise NotImplementedError
