@@ -152,13 +152,12 @@ class HPtuner:
         # We find the selection of best hyperparameters according to tpe
         fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=self.nb_configs())
 
-    def gaussian_process(self, loss, n_evals, **kwargs):
+    def gaussian_process(self, loss, **kwargs):
 
         """
         Tunes our model's hyper-parameter using gaussian process (a bayesian optimization method)
 
         :param loss: loss function to minimize
-        :param n_evals: maximal number of evaluations to do
         :param kwargs: - nbr_initial_evals : number of points to evaluate before the beginning of the test
                        - method_type : one method available in ['GP', 'GP_MCMC']
                        - acquisition_function : one function available in ['EI', 'MPI']
@@ -191,7 +190,7 @@ class HPtuner:
                                          model_type=method_type, initial_design_numdata=nbr_initial_evals,
                                          acquisition_type=acquisition_fct)
 
-        optimizer.run_optimization(max_iter=(n_evals - nbr_initial_evals))
+        optimizer.run_optimization(max_iter=(self.nb_configs() - nbr_initial_evals))
         optimizer.plot_acquisition()
 
     def tune(self, X=None, t=None, dtset=None, nb_cross_validation=1, valid_size=0.2, **kwargs):
