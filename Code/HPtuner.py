@@ -16,8 +16,6 @@ from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
 
-
-
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'bohb']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
