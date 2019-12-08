@@ -51,7 +51,7 @@ class HPtuner:
         self.test_default = test_default_hyperparam
         self.total_budget = total_budget - int(test_default_hyperparam)*max_budget_per_config
         self.max_budget_per_config = max_budget_per_config
-        self.tuning_history = ExperimentAnalyst(method, type(model).__name__)
+        self.tuning_history = ExperimentAnalyst(method, type(model).__name__, total_budget, max_budget_per_config)
 
     def set_search_space(self, hp_search_space_dict):
 
