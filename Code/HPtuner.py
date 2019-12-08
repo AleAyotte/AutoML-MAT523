@@ -139,16 +139,15 @@ class HPtuner:
         # We find the selection of best hyperparameters according to random_search
         fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=self.nb_configs())
 
-    def tpe(self, loss, n_evals):
+    def tpe(self, loss):
 
         """
         Tunes our model's hyper-parameter with Tree of Parzen estimators method (tpe)
 
         :param loss: loss function to minimize
-        :param n_evals: maximal number of evaluations to do
         """
         # We find the selection of best hyperparameters according to tpe
-        fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=n_evals)
+        fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=self.nb_configs())
 
     def gaussian_process(self, loss, n_evals, **kwargs):
 
@@ -228,7 +227,7 @@ class HPtuner:
             self.random_search(loss)
 
         elif self.method == 'tpe':
-            self.tpe(loss, n_evals)
+            self.tpe(loss)
 
         elif self.method == 'gaussian_process':
             self.gaussian_process(loss, n_evals, **kwargs)
