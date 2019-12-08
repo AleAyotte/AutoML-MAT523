@@ -8,7 +8,7 @@
 """
 
 from sklearn.model_selection import ParameterGrid
-from hyperopt import hp, fmin, rand, tpe
+from hyperopt import hp, fmin, rand, tpe, anneal
 from Model import HPtype
 from enum import Enum, unique
 from copy import deepcopy
@@ -17,7 +17,8 @@ from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
 
 
-method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'random_forest', 'hyperband', 'bohb']
+
+method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'bohb']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
 acquistions_type = ['EI', 'MPI']
@@ -25,7 +26,7 @@ acquistions_type = ['EI', 'MPI']
 
 class HPtuner:
 
-    def __init__(self, model, method, total_budget=10000, max_budget_per_config=200,  test_default_hyperparam=False):
+    def __init__(self, model, method, total_budget=10000, max_budget_per_config=200, test_default_hyperparam=False):
 
         """
         Class that generates an automatic hyper-parameter tuner for the model specified
@@ -152,6 +153,16 @@ class HPtuner:
         # We find the selection of best hyperparameters according to tpe
         fmin(fn=loss, space=self.search_space.space, algo=tpe.suggest, max_evals=self.nb_configs())
 
+    def simulated_annealing(self, loss):
+
+        """
+        Tunes our model's hyper-parameter with simulated annealing derivative free optimization method (SA)
+
+        :param loss: loss function to minimize
+        """
+        # We find the selection of best hyperparameters according to tpe
+        fmin(fn=loss, space=self.search_space.space, algo=anneal.suggest, max_evals=self.nb_configs())
+
     def gaussian_process(self, loss, **kwargs):
 
         """
@@ -233,6 +244,9 @@ class HPtuner:
         elif self.method == 'gaussian_process':
             self.gaussian_process(loss, **kwargs)
 
+        elif self.method == 'annealing':
+            self.simulated_annealing(loss)
+
         else:
             raise NotImplementedError
 
@@ -243,6 +257,8 @@ class HPtuner:
         self.model.set_hyperparameters(best_hyperparameters)
 
         # We train the model a last time with the best hyper-parameters
+        print("\n\n")
+        print("Training with best hyper-parameters found in processing...")
         self.model.fit(X, t, dtset)
 
         return self.tuning_history
@@ -260,7 +276,7 @@ class HPtuner:
 
             return SklearnSearchSpace(model)
 
-        elif method == 'random_search' or method == 'tpe':
+        elif method in ['random_search', 'tpe', 'annealing']:
 
             return HyperoptSearchSpace(model)
 
@@ -284,7 +300,7 @@ class HPtuner:
         :return: A specific loss function for our tuner
         """
 
-        if self.method in ['grid_search', 'random_search', 'tpe']:
+        if self.method in ['grid_search', 'random_search', 'tpe', 'annealing']:
 
             def loss(hyperparams):
                 """
@@ -294,6 +310,7 @@ class HPtuner:
                 :param hyperparams: dict of hyper-parameters
                 :return: 1 - (mean accuracy on cross validation)
                 """
+
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
 
@@ -327,6 +344,7 @@ class HPtuner:
                 """
                 # We extract the values from the 2d-numpy array
                 hyperparams = self.search_space.change_to_dict(hyperparams)
+
 
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
@@ -400,6 +418,7 @@ class HPtuner:
         """
         return int(max(self.total_budget/self.max_budget_per_config, 1))
 
+
 class SearchSpace:
 
     def __init__(self, space):
@@ -470,7 +489,7 @@ class HyperoptSearchSpace(SearchSpace):
         space = {}
 
         for hyperparam in model.HP_space:
-            space[hyperparam] = hp.choice(hyperparam, model.HP_space[hyperparam].value)
+            space[hyperparam] = model.HP_space[hyperparam]
 
         super(HyperoptSearchSpace, self).__init__(space)
 
@@ -480,6 +499,12 @@ class HyperoptSearchSpace(SearchSpace):
         Inserts the whole built space in a hp.choice object that can now be pass as a space parameter
         in Hyperopt hyper-parameter optimization algorithm
         """
+
+        for hyperparam in list(self.space.keys()):
+
+            # We check if the hyper-parameter space is an hyperOpt object (if yes, the user wants it to be tune)
+            if type(self[hyperparam]).__name__ == 'Hyperparameter':
+                self.space.pop(hyperparam)
 
         self.space = hp.choice('space', [self.space])
 
@@ -564,7 +589,7 @@ class GPyOptSearchSpace(SearchSpace):
 
                 # We save the possible values of the categorical variables in forms of strings and also integers
                 choices = list(self[hyperparam]['domain'])
-                integer_encoding = range(domain_length)
+                integer_encoding = tuple(range(domain_length))
 
                 # We change the domain of our space for the tuple with all values (int) possible
                 self[hyperparam]['domain'] = integer_encoding
@@ -575,6 +600,7 @@ class GPyOptSearchSpace(SearchSpace):
 
         self.hyperparameters_to_tune = list(self.space.keys())
         self.space = list(self.space.values())
+        print(self.hyperparameters_to_tune)
 
         if len(self.hyperparameters_to_tune) == 0:
             raise Exception('The search space has not been modified yet. Each hyper-parameter has only a discrete'
@@ -668,7 +694,7 @@ class ContinuousDomain(Domain):
         :return: Uniform distribution compatible with method used by HPtuner
         """
 
-        if tuner_method == 'random_search' or tuner_method == 'tpe':
+        if tuner_method in ['random_search', 'tpe', 'annealing']:
             return hp.uniform(label, self.lb, self.ub)
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
@@ -703,7 +729,7 @@ class DiscreteDomain(Domain):
         if tuner_method == 'grid_search':
             return self.values
 
-        elif tuner_method == 'random_search' or tuner_method == 'tpe':
+        elif tuner_method in ['random_search', 'tpe', 'annealing']:
             return hp.choice(label, self.values)
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
