@@ -25,13 +25,16 @@ acquistions_type = ['EI', 'MPI']
 
 class HPtuner:
 
-    def __init__(self, model, method, test_default_hyperparam=False):
+    def __init__(self, model, method, total_budget=10000, max_budget_per_config=200,  test_default_hyperparam=False):
 
         """
         Class that generates an automatic hyper-parameter tuner for the model specified
 
         :param model: Model on which we want to optimize hyper-parameters
         :param method: Name of the method of optimization to use
+        :param total_budget: total budget of our tuner in number of epochs
+        :param max_budget_per_config: maximum number of epochs allowed to test a single configuration
+        :param test_default_hyperparam: boolean indicating if we should consider default parameter in the tuning
         """
 
         if method not in method_list:
@@ -43,6 +46,8 @@ class HPtuner:
         self.search_space_modified = False
         self.log_scaled_hyperparameters = False
         self.test_default = test_default_hyperparam
+        self.total_budget = total_budget - int(test_default_hyperparam)*max_budget_per_config
+        self.max_budget_per_config = max_budget_per_config
         self.tuning_history = ExperimentAnalyst(method, type(model).__name__)
 
     def set_search_space(self, hp_search_space_dict):
@@ -113,26 +118,26 @@ class HPtuner:
         # We build all possible configurations
         all_configs = ParameterGrid(self.search_space.space)
 
-        # We find the selection of best hyperparameters according to grid_search
+        # We find the selection of best hyper-parameters according to grid_search
+        print("\n\n")
         pbar = tqdm(total=len(all_configs), postfix='best loss : ' +
-                                                    str(round(1 - self.tuning_history.actual_best_accuracy, 6)))
+                                                    str(round(1 - self.tuning_history.actual_best_accuracy, 10)))
 
         for config in all_configs:
             loss(config)
-            pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 6))
+            pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 10))
             pbar.update()
 
-    def random_search(self, loss, n_evals):
+    def random_search(self, loss):
 
         """
         Tunes our model's hyper-parameters by evaluate random points in our search "n_evals" times
 
         :param loss: loss function to minimize
-        :param n_evals: Number of evaluations to do
         """
 
         # We find the selection of best hyperparameters according to random_search
-        fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=n_evals)
+        fmin(fn=loss, space=self.search_space.space, algo=rand.suggest, max_evals=self.nb_configs())
 
     def tpe(self, loss, n_evals):
 
@@ -187,7 +192,7 @@ class HPtuner:
         optimizer.run_optimization(max_iter=(n_evals - nbr_initial_evals))
         optimizer.plot_acquisition()
 
-    def tune(self, X=None, t=None, dtset=None, n_evals=10, nb_cross_validation=1, valid_size=0.2, **kwargs):
+    def tune(self, X=None, t=None, dtset=None, nb_cross_validation=1, valid_size=0.2, **kwargs):
 
         """
         Optimizes model's hyper-parameters with the method specified at the ignition of our tuner
@@ -206,7 +211,6 @@ class HPtuner:
 
         # We save results for the default hyperparameters if the user wanted it
         if self.test_default:
-            n_evals -= 1
             self.test_default_hyperparameters(X, t, dtset, nb_cross_validation, valid_size)
 
         # We reformat the search space
@@ -214,15 +218,14 @@ class HPtuner:
 
         # We build loss function
         loss = self.build_loss_funct(X=X, t=t, dtset=dtset,
-                                     nb_of_cross_validation=nb_cross_validation, valid_size=valid_size,
-                                     n_evals=n_evals)
+                                     nb_of_cross_validation=nb_cross_validation, valid_size=valid_size)
 
         # We tune hyper-parameters with the method chosen
         if self.method == 'grid_search':
             self.grid_search(loss)
 
         elif self.method == 'random_search':
-            self.random_search(loss, n_evals)
+            self.random_search(loss)
 
         elif self.method == 'tpe':
             self.tpe(loss, n_evals)
@@ -268,7 +271,7 @@ class HPtuner:
         else:
             raise NotImplementedError
 
-    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1, valid_size=0.2, n_evals=10):
+    def build_loss_funct(self, X=None, t=None, dtset=None, nb_of_cross_validation=1, valid_size=0.2):
 
         """
         Builds a loss function, returning the mean of a cross validation, that will be available for HPtuner methods
@@ -309,8 +312,9 @@ class HPtuner:
         if self.method == 'gaussian_process':
 
             # We start a loading bar
-            pbar = tqdm(total=n_evals, postfix='best loss : ' +
-                                               str(round(1 - self.tuning_history.actual_best_accuracy, 10)))
+            print("\n\n")
+            pbar = tqdm(total=self.nb_configs(), postfix='best loss : ' +
+                        str(round(1 - self.tuning_history.actual_best_accuracy, 10)))
 
             def loss(hyperparams):
 
@@ -386,6 +390,15 @@ class HPtuner:
             if self.model.HP_space[hyperparam].type.value == HPtype.integer.value:
                 hp_dict[hyperparam] = int(hp_dict[hyperparam])
 
+    def nb_configs(self):
+
+        """
+        Compute the equivalence of the epochs budget in terms of number points to evaluate in our search space
+        for all method except hyperband and bohb
+
+        :return: number of point to evaluate at the maximal budget per config
+        """
+        return int(max(self.total_budget/self.max_budget_per_config, 1))
 
 class SearchSpace:
 
