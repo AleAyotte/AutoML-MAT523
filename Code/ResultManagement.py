@@ -30,37 +30,43 @@ class ExperimentAnalyst:
         self.tuning_method = tuning_method
         self.total_budget = total_epochs_budget
         self.max_budget_per_config = max_budget_per_config
-        self.method_type = None               # Only used when tuning method is a gaussian process
+        self.method_type = None                                 # Only used when tuning method is a gaussian process
+        self.total_unique_sampled = 0                           # Only important with bandit method
         self.nbr_of_cross_validation = 1
         self.validation_size = 0.2
         self.hyperparameters_history = []
         self.best_hyperparameters = {}
         self.accuracy_history = []
         self.best_accuracy_history = []
-        self.actual_best_accuracy = 0  # Worst possible accuracy
+        self.actual_best_accuracy = 0                           # Worst possible accuracy
 
-    def update(self, new_loss, hyperparams):
+    def update(self, new_loss, hyperparams, budget):
 
         """
-        Updates all attributes of the ExperimentAnalyst considering the new loss
+        Updates attributes of the ExperimentAnalyst considering the new loss for the configuration
+        only if it's evaluated at full budget
 
         :param new_loss: new loss obtained
         :param hyperparams: hyper-parameters associated to the new loss
+        :param budget: budget associated with the evaluations (in epochs)
         """
 
-        # Update history
-        accuracy = 1 - new_loss
-        self.accuracy_history.append(accuracy)
-        self.hyperparameters_history.append(hyperparams)
+        # We only consider configurations evaluated at full budget
+        if budget == self.max_budget_per_config:
 
-        # Update best pair of hyper-parameters and loss if the actual one is beaten
-        if accuracy > self.actual_best_accuracy:
-            self.actual_best_accuracy = accuracy
-            self.best_accuracy_history.append(accuracy)
-            self.best_hyperparameters = hyperparams
+            # Update history
+            accuracy = 1 - new_loss
+            self.accuracy_history.append(accuracy)
+            self.hyperparameters_history.append(hyperparams)
 
-        else:
-            self.best_accuracy_history.append(self.actual_best_accuracy)
+            # Update best pair of hyper-parameters and loss if the actual one is beaten
+            if accuracy > self.actual_best_accuracy:
+                self.actual_best_accuracy = accuracy
+                self.best_accuracy_history.append(accuracy)
+                self.best_hyperparameters = hyperparams
+
+            else:
+                self.best_accuracy_history.append(self.actual_best_accuracy)
 
     def plot_accuracy_history(self, best_accuracy=False, show_plot=True):
 
@@ -79,7 +85,7 @@ class ExperimentAnalyst:
             plt.ylabel('accuracy')
 
         plt.suptitle(self.tuning_method)
-        plt.xlabel('iteration')
+        plt.xlabel('i-th point evaluated at full budget')
 
         if show_plot:
             plt.show()
@@ -179,6 +185,9 @@ class ExperimentAnalyst:
         if noise is not None:
             f.write("Noise : %g \n\n" % noise)
 
+        f.write("Number of unique configurations tested : %g \n\n" % max(len(self.hyperparameters_history),
+                                                                         self.total_unique_sampled))
+        f.write("Number of configurations tested with full budget : %g \n\n" % len(self.best_accuracy_history))
         f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
         f.write("Best hyper-parameters found : %s \n\n" % str(self.best_hyperparameters))
         f.write("Test accuracy : %g" % test_accuracy)
@@ -192,7 +201,7 @@ class ExperimentAnalyst:
         Resets ExperimentAnalyst to ignition values
         """
 
-        self.__init__(self.tuning_method, self.model_name)
+        self.__init__(self.tuning_method, self.model_name, self.total_budget, self.max_budget_per_config)
 
     @staticmethod
     def write_csv(path, file_name, rows):
