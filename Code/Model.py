@@ -89,6 +89,16 @@ class Model:
 
         raise NotImplementedError
 
+    def set_max_epoch(self, max_epoch):
+
+        """
+
+        Set maximal number of epochs to do in training
+
+        :param max_epoch: maximum number of epochs to do during training
+        """
+        raise NotImplementedError
+
     def predict(self, X):
 
         """
@@ -178,7 +188,7 @@ class Model:
 
 class SVM(Model):
 
-    def __init__(self, C=1.0, kernel="rbf", degree=3, gamma='auto', coef0=0.0, max_iter=-1):
+    def __init__(self, C=1.0, kernel="rbf", degree=3, gamma='auto', coef0=0.0, max_iter=1000):
 
         """
         Class that generates a support vector machine
@@ -286,6 +296,16 @@ class SVM(Model):
         """
 
         self.model_frame.set_params(**hyperparams)
+
+    def set_max_epoch(self, max_epoch):
+
+        """
+        Set parameter max_iter in our model
+
+        :param max_epoch: maximum number of epochs to do during training
+        """
+
+        self.model_frame.set_params(**{'max_iter': max_epoch})
 
 
 class MLP(Model):
@@ -436,6 +456,16 @@ class MLP(Model):
 
         self.model_frame.set_params(**hps)
 
+    def set_max_epoch(self, max_epoch):
+
+        """
+        Set parameter max_iter in our model
+
+        :param max_epoch: maximum number of epochs to do during training
+        """
+
+        self.model_frame.set_params(**{'max_iter': max_epoch})
+
 
 class Cnn(Model, torch.nn.Module):
     def __init__(self, num_classes, activation='relu', lr=0.001, alpha=0.0, eps=1e-8, drop_rate=0.5, b_size=15,
@@ -571,6 +601,16 @@ class Cnn(Model, torch.nn.Module):
                             "\n 0: No pooling; 1: MaxPool; 2: AvgPool; 3: Adaptative MaxPool; 4: Adaptative AvgPool")
         else:
             return None
+
+    def set_max_epoch(self, max_epoch):
+
+        """
+        Set parameter num_epoch in our model
+
+        :param max_epoch: maximum number of epochs to do during training
+        """
+
+        self.num_epoch = max_epoch
 
     def get_activation_function(self):
 
