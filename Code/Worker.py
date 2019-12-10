@@ -7,14 +7,13 @@
                         HpBandster library. It also provides functions to setup the environment before using
                         HpBandster.
 """
-import ConfigSpace as CS
+
 import time
 import hpbandster.core.nameserver as hpns
-import hpbandster.core.result as hpres
 from hpbandster.optimizers import BOHB
 from hpbandster.optimizers import HyperBand
 from hpbandster.core.worker import Worker
-
+from numpy import log
 
 class MyWorker(Worker):
 
@@ -50,7 +49,7 @@ class MyWorker(Worker):
         })
 
 
-def start_hpbandster_process(method, configspace, loss):
+def start_hpbandster_process(method, configspace, loss, total_budget, max_budget_per_config, eta=3):
 
     """
     Starts a server and a worker object needed for the HpBandSter optimization process
@@ -58,13 +57,11 @@ def start_hpbandster_process(method, configspace, loss):
     :param method: (str) Specifies if we use BOHB or hyperband
     :param configspace: Hyper-parameter search space
     :param loss: Loss function to minimize
+    :param total_budget: Total budget (in number of epochs) allowed for optimization
+    :param max_budget_per_config: Maximal number of epochs allowed for one config
+    :param eta: split size between every steps of successful halving
     :return: NameServer and HpBandSter optimizer
     """
-
-    # This line is most useful for really long runs, where intermediate results could already be
-    # interesting. The core.result submodule contains the functionality to read the two generated
-    # files (results.json and configs.json) and create a Result object.
-    # result_logger = hpres.json_result_logger(directory=os.getcwd(), overwrite=True)
 
     # Start a nameserver:
     NS = hpns.NameServer(run_id=method)
@@ -80,7 +77,7 @@ def start_hpbandster_process(method, configspace, loss):
                          run_id=method,
                          nameserver=ns_host,
                          nameserver_port=ns_port,
-                         min_budget=5, max_budget=50,
+                         min_budget=1, max_budget=max_budget_per_config,
                          )
     else:
 
@@ -88,7 +85,11 @@ def start_hpbandster_process(method, configspace, loss):
                               run_id=method,
                               nameserver=ns_host,
                               nameserver_port=ns_port,
-                              min_budget=5, max_budget=50,
+                              min_budget=1, max_budget=max_budget_per_config,
                               )
 
-    return NS, optimizer
+    # We compute the maximal number of iteration to be exact with the original paper
+    # (We divide the total budget by the fixed budget per successful halving iteration : (Smax+1)*bmax)
+    max_iter = total_budget/(int(-1*(log(1/max_budget_per_config))/log(eta) + 1)*max_budget_per_config)
+
+    return NS, max_iter, optimizer

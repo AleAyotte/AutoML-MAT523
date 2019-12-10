@@ -14,17 +14,22 @@ import os.path
 
 class ExperimentAnalyst:
 
-    def __init__(self, tuning_method, model_name):
+    def __init__(self, tuning_method, model_name, total_epochs_budget, max_budget_per_config):
 
         """
         Class that generates intelligent and useful storage and visualization
         methods for all hyper-parameter tuning results.
 
         :param tuning_method: Name of the method used for hyper-parameter tuning
+        :param model_name: Name of the model used
+        :param total_epochs_budget: total budget of epochs allowed for the experiment
+        :param max_budget_per_config: maximum number of epochs allow to one configuration
         """
 
         self.model_name = model_name
         self.tuning_method = tuning_method
+        self.total_budget = total_epochs_budget
+        self.max_budget_per_config = max_budget_per_config
         self.method_type = None               # Only used when tuning method is a gaussian process
         self.nbr_of_cross_validation = 1
         self.validation_size = 0.2
@@ -163,6 +168,8 @@ class ExperimentAnalyst:
 
         # We write the highlights
         f.write("Experiment title: %s \n\n" % experiment_title)
+        f.write("Total budget (in epochs): %s \n\n" % self.total_budget)
+        f.write("Max budget per config (in epochs): %s \n\n" % self.max_budget_per_config)
         f.write("Model name : %s \n\n" % self.model_name)
         f.write("Nbr. of cross validation done in each iteration : %g \n\n" % self.nbr_of_cross_validation)
         f.write("Validation size in cross validation : %g \n\n" % self.validation_size)
@@ -172,7 +179,6 @@ class ExperimentAnalyst:
         if noise is not None:
             f.write("Noise : %g \n\n" % noise)
 
-        f.write("Number of iterations : %g \n\n" % len(self.accuracy_history))
         f.write("Best accuracy obtained in tuning : %g \n\n" % self.actual_best_accuracy)
         f.write("Best hyper-parameters found : %s \n\n" % str(self.best_hyperparameters))
         f.write("Test accuracy : %g" % test_accuracy)
