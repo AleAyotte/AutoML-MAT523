@@ -31,7 +31,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
     train_size = len(x_train)
     search_space = {'alpha': ContinuousDomain(-8, 0, log_scaled=True),
                     'learning_rate_init': ContinuousDomain(-8, 0, log_scaled=True),
-                    'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int))),
+                    'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int).tolist())),
                     'hidden_layers_number': DiscreteDomain(range(1, 21)),
                     'layers_size': DiscreteDomain(range(5, 51))}
 
@@ -52,6 +52,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
     mlp_for_rs = pickle.loads(save)
     results_path = os.path.join(os.path.dirname(module_path), 'Results')
 
+
     # We initialize a tuner with random search method and set our search space
     rs_tuner = HPtuner(mlp_for_rs, 'random_search', total_budget=total_budget,
                        max_budget_per_config=max_budget_per_config)
@@ -64,7 +65,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
                                 train_size, mlp_for_rs.score(x_test, t_test), noise=noise)
 
     """
-    TPE (Tree-structured Parzen Estimator )
+    # TPE (Tree-structured Parzen Estimator )
     """
 
     print('\n\n TPE \n\n')
@@ -82,7 +83,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
                                  train_size, mlp_for_tpe.score(x_test, t_test))
 
     """
-    Simulated Annealing
+    # Simulated Annealing
     """
 
     print('\n\n SIMULATED ANNEALING \n\n')
@@ -100,7 +101,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
                                     train_size, mlp_for_anneal.score(x_test, t_test), noise=noise)
 
     """
-    Standard GP with EI acquisition function
+    # Standard GP with EI acquisition function
     """
 
     print('\n\n GP WITH EI \n\n')
@@ -121,7 +122,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
                                 train_size, mlp_for_GP.score(x_test, t_test), noise=noise)
 
     """
-    Standard GP with MPI acquisition function
+    # Standard GP with MPI acquisition function
     """
 
     print('\n\n GP WITH MPI \n\n')
@@ -142,26 +143,25 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
                                  train_size, mlp_for_GP2.score(x_test, t_test), noise=noise)
 
     """
-    Hyperband
-    
+    # Hyperband
     """
 
     print('\n\n HYPERBAND \n\n')
 
     # We do a deep copy of our MLP for the test, initialize a tuner with the standard GP method and set our search space
     mlp_hb = pickle.loads(save)
-    mlp_hb_tuner = HPtuner(mlp_hb, 'gaussian_process', total_budget=total_budget,
+    mlp_hb_tuner = HPtuner(mlp_hb, 'hyperband', total_budget=total_budget,
                            max_budget_per_config=max_budget_per_config)
 
     mlp_hb_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
-    hb_results = mlp_hb_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation, acquisition_function='MPI')
+    hb_results = mlp_hb_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
     hb_results.save_all_results(results_path, experiment_title, dataset_name,
                                 train_size, mlp_hb.score(x_test, t_test), noise=noise)
 
     """
-    Grid search
+    # Grid search
     """
 
     print('\n\n GRID SEARCH \n\n')
