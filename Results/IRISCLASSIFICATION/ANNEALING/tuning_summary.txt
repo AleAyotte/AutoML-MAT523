@@ -20,6 +20,6 @@ Number of configurations tested with full budget : 250
 
 Best accuracy obtained in tuning : 1 
 
-Best hyper-parameters found : {'hidden_layers_number': 13, 'layers_size': 39, 'alpha': 0.0007019905368640368, 'batch_size': 400, 'learning_rate_init': 0.00025649150548133574} 
+Best hyper-parameters found : {'alpha': 1.3878290229235079e-06, 'batch_size': 100, 'hidden_layers_number': 7, 'layers_size': 44, 'learning_rate_init': 0.0003864143956867666} 
 
 Test accuracy : 1
