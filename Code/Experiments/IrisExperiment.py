@@ -6,8 +6,8 @@
 
     @Description:       For this experiment, we will evaluate the performance of all hyper-parameter optimization
                         methods implemented in a simple context with a fixed total budget of
-                        (250x200x4 = 200 000 epochs), a max budget per config of 800 epochs and a number
-                        of 4 cross validation per config tested. For a better understanding the budget will allow
+                        (250x200x2 = 100 000 epochs), a max budget per config of 400 epochs and a number
+                        of 2 cross validation per config tested. For a better understanding the budget will allow
                         our model to evaluate 250 different configurations with non-bandit optimization method.
 
                         Now, considering Iris data set classification problem (150 instances, 4 attributes, 3 classes),
@@ -36,10 +36,10 @@ from MLP_experiment_frame import mlp_experiment
 # We generate data for our tests and global variables for all tests
 x_train, t_train, x_test, t_test = dm.load_iris_dataset(random_state=42)
 dataset_name = 'Iris'
-nb_cross_validation = 4
+nb_cross_validation = 2
 experiment_title = 'IrisClassification'
-total_budget = 200000
-max_budget_per_config = 800
+total_budget = 100000
+max_budget_per_config = 400
 
 
 mlp_experiment(experiment_title, x_train, t_train, x_test, t_test, total_budget,
