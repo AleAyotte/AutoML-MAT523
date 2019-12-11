@@ -25,6 +25,8 @@ from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
 def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
                    total_budget, max_budget_per_config, dataset_name, nb_cross_validation=1, noise=None):
 
+    print('Experiment in process..\n')
+
     # We compute training size
     train_size = len(x_train)
     search_space = {'alpha': ContinuousDomain(-8, 0, log_scaled=True),
