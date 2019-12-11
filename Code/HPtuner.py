@@ -19,7 +19,7 @@ from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
 from Worker import start_hpbandster_process
-import numpy as np
+
 
 
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'BOHB']
@@ -425,14 +425,14 @@ class HPtuner:
                 self.float_to_int(hyperparams)
 
                 # We add or change the parameter "max_iter"
-                hyperparams['max_iter'] = int(budget)
+                copied_model.set_max_epoch(int(budget))
 
                 # We set the hyper-parameters and compute the loss associated to it
                 copied_model.set_hyperparameters(hyperparams)
                 loss_value = 1 - (copied_model.cross_validation(X_train=X, t_train=t, dtset=dtset,
                                                                 nb_of_cross_validation=nb_of_cross_validation,
                                                                 valid_size=valid_size))
-                hyperparams.pop('max_iter')
+
                 self.tuning_history.update(loss_value, hyperparams, int(budget))
 
                 return loss_value
