@@ -212,7 +212,7 @@ class HPtuner:
         """
 
         # We change our model maximal number of epochs to do in training
-        self.model.set_max_epoch(self.max_budget_per_config / nb_cross_validation)
+        self.model.set_max_epoch(int(self.max_budget_per_config / nb_cross_validation))
 
         # We set the number of cross validation and valid size used, in tuning history
         self.tuning_history.nbr_of_cross_validation = nb_cross_validation
@@ -343,7 +343,6 @@ class HPtuner:
                 """
                 # We extract the values from the 2d-numpy array
                 hyperparams = self.search_space.change_to_dict(hyperparams)
-
 
                 if self.log_scaled_hyperparameters:
                     self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
