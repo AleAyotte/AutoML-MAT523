@@ -1,5 +1,5 @@
 """
-    @file:              nSpiralExperiment1.py
+    @file:              nSpiralExperiment2.py
     @Author:            Nicolas Raymond
     @Creation Date:     10/12/2019
     @Last modification: 10/12/2019
