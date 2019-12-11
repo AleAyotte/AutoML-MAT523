@@ -18,10 +18,8 @@ import pickle
 # Append path of module to sys and import module
 module_path = os.path.dirname(os.getcwd())
 sys.path.append(module_path)
-import DataManager as dm
 import Model as mod
 from HPtuner import HPtuner, ContinuousDomain, DiscreteDomain
-
 
 
 def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
@@ -53,13 +51,15 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
     results_path = os.path.join(os.path.dirname(module_path), 'Results')
 
     # We initialize a tuner with random search method and set our search space
-    rs_tuner = HPtuner(mlp_for_rs, 'random_search', total_budget=total_budget, max_budget_per_config=400)
+    rs_tuner = HPtuner(mlp_for_rs, 'random_search', total_budget=total_budget,
+                       max_budget_per_config=max_budget_per_config)
+
     rs_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
     rs_results = rs_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
     rs_results.save_all_results(results_path, experiment_title, dataset_name,
-                                train_size, mlp_for_rs.score(x_test, t_test))
+                                train_size, mlp_for_rs.score(x_test, t_test), noise=noise)
 
     """
     TPE (Tree-structured Parzen Estimator )
@@ -69,7 +69,9 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We do a deep copy of our MLP for the test, initialize a tuner with tpe method and set our search space
     mlp_for_tpe = pickle.loads(save)
-    tpe_tuner = HPtuner(mlp_for_tpe, 'tpe', total_budget=total_budget, max_budget_per_config=400)
+    tpe_tuner = HPtuner(mlp_for_tpe, 'tpe', total_budget=total_budget,
+                        max_budget_per_config=max_budget_per_config)
+
     tpe_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
@@ -85,13 +87,15 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We do a deep copy of our MLP for the test, initialize a tuner with tpe method and set our search space
     mlp_for_anneal = pickle.loads(save)
-    anneal_tuner = HPtuner(mlp_for_anneal, 'annealing', total_budget=total_budget, max_budget_per_config=400)
+    anneal_tuner = HPtuner(mlp_for_anneal, 'annealing', total_budget=total_budget,
+                           max_budget_per_config=max_budget_per_config)
+
     anneal_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
     anneal_results = anneal_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
     anneal_results.save_all_results(results_path, experiment_title, dataset_name,
-                                    train_size, mlp_for_anneal.score(x_test, t_test))
+                                    train_size, mlp_for_anneal.score(x_test, t_test), noise=noise)
 
     """
     Standard GP with EI acquisition function
@@ -101,7 +105,9 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We do a deep copy of our MLP for the test, initialize a tuner with the standard GP method and set our search space
     mlp_for_GP = pickle.loads(save)
-    GP_tuner = HPtuner(mlp_for_GP, 'gaussian_process', total_budget=total_budget, max_budget_per_config=400)
+    GP_tuner = HPtuner(mlp_for_GP, 'gaussian_process', total_budget=total_budget,
+                       max_budget_per_config=max_budget_per_config)
+
     GP_tuner.set_search_space(search_space)
 
     # We execute the tuning using default parameter for GP
@@ -110,7 +116,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We save the results
     GP_results.save_all_results(results_path, experiment_title, dataset_name,
-                                train_size, mlp_for_GP.score(x_test, t_test))
+                                train_size, mlp_for_GP.score(x_test, t_test), noise=noise)
 
     """
     Standard GP with MPI acquisition function
@@ -120,7 +126,9 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We do a deep copy of our MLP for the test, initialize a tuner with the standard GP method and set our search space
     mlp_for_GP2 = pickle.loads(save)
-    GP_tuner2 = HPtuner(mlp_for_GP2, 'gaussian_process', total_budget=total_budget, max_budget_per_config=400)
+    GP_tuner2 = HPtuner(mlp_for_GP2, 'gaussian_process', total_budget=total_budget,
+                        max_budget_per_config=max_budget_per_config)
+
     GP_tuner2.set_search_space(search_space)
 
     # We execute the tuning using default parameter for GP except MPI acquisition
@@ -129,7 +137,7 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We save the results
     GP_results2.save_all_results(results_path, experiment_title, dataset_name,
-                                 train_size, mlp_for_GP2.score(x_test, t_test))
+                                 train_size, mlp_for_GP2.score(x_test, t_test), noise=noise)
 
     """
     Hyperband
@@ -140,13 +148,15 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
 
     # We do a deep copy of our MLP for the test, initialize a tuner with the standard GP method and set our search space
     mlp_hb = pickle.loads(save)
-    mlp_hb_tuner = HPtuner(mlp_hb, 'gaussian_process', total_budget=total_budget, max_budget_per_config=400)
+    mlp_hb_tuner = HPtuner(mlp_hb, 'gaussian_process', total_budget=total_budget,
+                           max_budget_per_config=max_budget_per_config)
+
     mlp_hb_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
     hb_results = mlp_hb_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation, acquisition_function='MPI')
     hb_results.save_all_results(results_path, experiment_title, dataset_name,
-                                train_size, mlp_hb.score(x_test, t_test))
+                                train_size, mlp_hb.score(x_test, t_test), noise=noise)
 
     """
     Grid search
@@ -166,4 +176,4 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
     # We execute the tuning and save the results
     gs_results = gs_tuner.tune(x_train, t_train, nb_cross_validation=nb_cross_validation)
     gs_results.save_all_results(results_path, experiment_title, dataset_name,
-                                train_size, mlp_for_gs.score(x_test, t_test))
+                                train_size, mlp_for_gs.score(x_test, t_test), noise=noise)
