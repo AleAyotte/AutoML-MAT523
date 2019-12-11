@@ -214,6 +214,9 @@ class HPtuner:
         :param valid_size: Percentage of training data used as validation data
         """
 
+        # We adjust the total budget considering the number of cross validation done per config
+        self.total_budget /= nb_cross_validation
+
         # We set the number of cross validation and valid size used, in tuning history
         self.tuning_history.nbr_of_cross_validation = nb_cross_validation
         self.tuning_history.validation_size = valid_size
