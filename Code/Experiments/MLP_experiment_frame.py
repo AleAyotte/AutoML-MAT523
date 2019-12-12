@@ -46,8 +46,9 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
     results_path = os.path.join(os.path.dirname(module_path), 'Results')
 
     """
-    Random search
+    #Random search
     """
+
 
     print('\n\n RANDOM SEARCH \n\n')
 
