@@ -1,0 +1,25 @@
+Experiment title: IrisClassification2 
+
+Total budget (in epochs): 150000 
+
+Max budget per config (in epochs): 600 
+
+Model name : MLP 
+
+Nbr. of cross validation done in each iteration : 4 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : Iris 
+
+Size of training set : 120 
+
+Number of unique configurations tested : 250 
+
+Number of configurations tested with full budget : 250 
+
+Best accuracy obtained in tuning : 1 
+
+Best hyper-parameters found : {'hidden_layers_number': 2, 'layers_size': 5, 'alpha': 1.0, 'batch_size': 300, 'learning_rate_init': 0.16173835451488372} 
+
+Test accuracy : 1
