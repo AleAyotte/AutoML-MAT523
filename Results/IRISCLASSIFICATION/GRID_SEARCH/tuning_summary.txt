@@ -18,8 +18,8 @@ Number of unique configurations tested : 250
 
 Number of configurations tested with full budget : 250 
 
-Best accuracy obtained in tuning : 0.979167 
+Best accuracy obtained in tuning : 1 
 
-Best hyper-parameters found : {'activation': 'relu', 'alpha': 0.2500000075, 'batch_size': 200, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layers_number': 1, 'layers_size': 20, 'learning_rate_init': 0.500000005, 'solver': 'adam'} 
+Best hyper-parameters found : {'activation': 'relu', 'alpha': 1e-08, 'batch_size': 200, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layers_number': 1, 'layers_size': 20, 'learning_rate_init': 0.2500000075, 'solver': 'adam'} 
 
 Test accuracy : 1
