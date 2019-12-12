@@ -8,7 +8,7 @@
 
 """
 
-from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype
+from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype, load_breast_cancer
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import numpy as np
@@ -309,7 +309,6 @@ def load_csv(path, label_col, test_split=0.2):
     data_csv = pd.read_csv(path).values
 
     features = np.delete(data_csv, label_col, axis=1)
-    # features = np.delete(np.delete(data_csv, label_col, axis=1), 0, axis=1)
     labels = data_csv[:, label_col]
 
     # Scaling features
@@ -364,6 +363,26 @@ def load_forest_covertypes_dataset(test_split=0.2, random_state=None):
 
     x_train, x_test, t_train, t_test = validation_split(X, t, valid_size=test_split, random_state=random_state)
 
+    return x_train, t_train, x_test, t_test
+
+
+def load_breast_cancer_dataset(scaled=True, test_split=0.2, random_state=None):
+
+    """
+    Loads the breast cancer wisconsin dataset for classication task
+
+    :param scaled: True for scaling the data.
+    :param test_split: test_split: Proportion of the dataset that will be use as test data (Default 0.2 = 20%).
+    :param random_state: Seed generator that will be uses for splitting the data.
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively.
+    """
+
+    data, target = load_breast_cancer(True)
+
+    if scaled:
+        data = preprocessing.scale(data)
+
+    x_train, x_test, t_train, t_test = validation_split(data, target, valid_size=test_split, random_state=random_state)
     return x_train, t_train, x_test, t_test
 
 
