@@ -7,6 +7,9 @@
     @Description:       This file provides all functions linked to hyper-parameters optimization methods
 """
 
+import pickle
+import ConfigSpace as CS
+import ConfigSpace.hyperparameters as CSH
 from sklearn.model_selection import ParameterGrid
 from hyperopt import hp, fmin, rand, tpe, anneal
 from Model import HPtype
@@ -15,8 +18,11 @@ from copy import deepcopy
 from tqdm import tqdm
 from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
+from Worker import start_hpbandster_process
 
-method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'bohb']
+
+
+method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'BOHB']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
 acquistions_type = ['EI', 'MPI']
@@ -95,7 +101,7 @@ class HPtuner:
         if domain.type.value < self.model.HP_space[hyperparameter].type.value:
             raise Exception('You cannot attribute a continuous search space to a non real hyper-parameter')
 
-        # If the new domain is continuous and the current domain will be changed cause
+        # If the new domain is continuous the current domain will be changed cause
         # the default domain is discrete (NOTE THAT THIS LINE IS ONLY EFFECTIVE WITH GPYOPT SEARCH SPACE)
         if domain.type == DomainType.continuous:
             self.search_space.change_hyperparameter_type(hyperparameter, domain.type)
@@ -199,6 +205,29 @@ class HPtuner:
         optimizer.run_optimization(max_iter=(self.nb_configs() - nbr_initial_evals))
         optimizer.plot_acquisition()
 
+    def hyperband(self, loss):
+
+        """
+        Tune's our model's hyper-parameters using hyperband method
+
+        :param loss: loss function to minimize
+        :param n_evals: maximal number of evaluations to do (budget)
+        """
+        # We initialize the process
+        NS, smax, optimizer = start_hpbandster_process(self.method, self.search_space.space, loss,
+                                                       self.total_budget, self.max_budget_per_config)
+        # We run the optimization
+        res = optimizer.run(n_iterations=smax)
+
+        # We extract the results
+        id2config = res.get_id2config_mapping()
+
+        # We update total unique sampled number of our Tuning History (Experiment Analyst object)
+        self.tuning_history.total_unique_sampled = len(id2config.keys())
+        print('A total of %i runs where executed.' % len(res.get_all_runs()))
+        optimizer.shutdown(shutdown_workers=True)
+        NS.shutdown()
+
     def tune(self, X=None, t=None, dtset=None, nb_cross_validation=1, valid_size=0.2, **kwargs):
 
         """
@@ -246,6 +275,9 @@ class HPtuner:
         elif self.method == 'annealing':
             self.simulated_annealing(loss)
 
+        elif self.method == 'hyperband':
+            self.hyperband(loss)
+
         else:
             raise NotImplementedError
 
@@ -283,6 +315,10 @@ class HPtuner:
 
             return GPyOptSearchSpace(model)
 
+        elif method == 'hyperband' or method == 'BOHB':
+
+            return HpBandSterSearchSpace(model)
+
         else:
             raise NotImplementedError
 
@@ -319,13 +355,13 @@ class HPtuner:
                                                               nb_of_cross_validation=nb_of_cross_validation,
                                                               valid_size=valid_size))
                 # We update our tuning history
-                self.tuning_history.update(loss_value, hyperparams)
+                self.tuning_history.update(loss_value, hyperparams, self.max_budget_per_config)
 
                 return loss_value
 
             return loss
 
-        if self.method == 'gaussian_process':
+        elif self.method == 'gaussian_process':
 
             # We start a loading bar
             print("\n\n")
@@ -357,9 +393,48 @@ class HPtuner:
                                                               valid_size=valid_size))
 
                 # We update our tuning history and the loading bar
-                self.tuning_history.update(loss_value, hyperparams)
+                self.tuning_history.update(loss_value, hyperparams, self.max_budget_per_config)
                 pbar.postfix = 'best loss : ' + str(round(1 - self.tuning_history.actual_best_accuracy, 10))
                 pbar.update()
+
+                return loss_value
+
+            return loss
+
+        elif self.method == 'hyperband' or self.method == 'BOHB':
+
+            pickle_obj = pickle.dumps(self.model)
+
+            def loss(hyperparams, budget):
+
+                """
+                Returns the mean negative value of the accuracy on a cross validation
+                (minimize 1 - accuracy is equivalent to maximize accuracy)
+
+                :param hyperparams: dict of hyper-parameters
+                :param budget: maximal number of epoch allowed for the model training
+                :return: 1 - (mean accuracy on cross validation)
+
+                """
+                # We start a new model base on default parameter of our original model
+                copied_model = pickle.loads(pickle_obj)
+
+                if self.log_scaled_hyperparameters:
+                    self.exponential(hyperparams, self.search_space.log_scaled_hyperparam)
+
+                # If some integer hyper-parameter are considered as numpy.float64 we convert them as int
+                self.float_to_int(hyperparams)
+
+                # We add or change the parameter "max_iter"
+                copied_model.set_max_epoch(int(budget))
+
+                # We set the hyper-parameters and compute the loss associated to it
+                copied_model.set_hyperparameters(hyperparams)
+                loss_value = 1 - (copied_model.cross_validation(X_train=X, t_train=t, dtset=dtset,
+                                                                nb_of_cross_validation=nb_of_cross_validation,
+                                                                valid_size=valid_size))
+
+                self.tuning_history.update(loss_value, hyperparams, int(budget))
 
                 return loss_value
 
@@ -637,6 +712,39 @@ class GPyOptSearchSpace(SearchSpace):
         self.space[key]['domain'] = value
 
 
+class HpBandSterSearchSpace(SearchSpace):
+
+    def __init__(self, model):
+
+        """
+        Class that defines a compatible search space with HpBandSter package hyper-parameter optimization algorithm
+
+        :param model: Available model from Model.py
+        """
+
+        space = {}
+
+        super(HpBandSterSearchSpace, self).__init__(space)
+
+    def reformat_for_tuning(self):
+
+        """
+        Converts the dictionnary of CSH object to a proper ConfigurationSpace accepted by HpBandSter.
+        """
+
+        # Initialization of configuration space
+        cs = CS.ConfigurationSpace()
+
+        # We extract CSH object from the dictionnary and put it in a list
+        if len(self.space) != 0:
+            self.space = list(self.space.values())
+            cs.add_hyperparameters(self.space)
+            self.space = cs
+
+        else:
+            raise Exception('Search space has not been modified yet, no tuning can be done.')
+
+
 @unique
 class DomainType(Enum):
 
@@ -698,6 +806,9 @@ class ContinuousDomain(Domain):
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
             return tuple([self.lb, self.ub])
 
+        elif tuner_method == 'hyperband' or tuner_method == 'BOHB':
+            return CSH.UniformFloatHyperparameter(label, lower=self.lb, upper=self.ub, log=False)
+
 
 class DiscreteDomain(Domain):
 
@@ -732,3 +843,6 @@ class DiscreteDomain(Domain):
 
         elif tuner_method == 'gaussian_process' or tuner_method == 'random_forest':
             return tuple(self.values)
+
+        elif tuner_method == 'hyperband' or tuner_method == 'BOHB':
+            return CSH.CategoricalHyperparameter(label, choices=self.values)
