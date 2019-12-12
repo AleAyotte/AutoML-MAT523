@@ -41,19 +41,20 @@ def mlp_experiment(experiment_title, x_train, t_train, x_test, t_test,
     mlp.fit(x_train, t_train)
     print('Initial score :', mlp.score(x_test, t_test))
 
+    # We save a deep copy of our model for the tests, and save the results path
+    save = pickle.dumps(mlp)
+    results_path = os.path.join(os.path.dirname(module_path), 'Results')
+
     """
     Random search
     """
 
     print('\n\n RANDOM SEARCH \n\n')
 
-    # We do a deep copy of our MLP for the test, set the experiment title and save the path to save the results
-    save = pickle.dumps(mlp)
+    # We do a deep copy of our MLP for the test
+
+    # We do a deep copy of our MLP for the test, initialize a tuner with random search method and set our search space
     mlp_for_rs = pickle.loads(save)
-    results_path = os.path.join(os.path.dirname(module_path), 'Results')
-
-
-    # We initialize a tuner with random search method and set our search space
     rs_tuner = HPtuner(mlp_for_rs, 'random_search', total_budget=total_budget,
                        max_budget_per_config=max_budget_per_config)
 
