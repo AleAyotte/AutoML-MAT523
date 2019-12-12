@@ -2,7 +2,7 @@
     @file:              nSpiralExperiment2.py
     @Author:            Nicolas Raymond
     @Creation Date:     10/12/2019
-    @Last modification: 10/12/2019
+    @Last modification: 11/12/2019
 
     @Description:       For this experiment, we will evaluate the performances of all hyper-parameter optimization
                         methods implemented in a simple context with a fixed total budget of
@@ -43,7 +43,6 @@ noise = 0.40
 x_train, t_train, x_test, t_test = dgen.generate_data(noise, 5, seed=10512)
 dataset_name = 'nSpiral'
 experiment_title = 'SPIRAL2'
-train_size = len(x_train)
 nb_cross_validation = 2
 total_budget = 100000
 max_budget_per_config = 400
