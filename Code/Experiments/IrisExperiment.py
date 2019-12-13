@@ -32,7 +32,7 @@ module_path = os.path.dirname(os.getcwd())
 sys.path.append(module_path)
 import DataManager as dm
 import Model as mod
-from MLP_experiment_frame import run_experiment
+from Experiment_frame import run_experiment
 from HPtuner import ContinuousDomain, DiscreteDomain
 
 
