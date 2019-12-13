@@ -24,13 +24,16 @@
 # Import code needed
 import sys
 import os
+from numpy import linspace
 
 # Append path of module to sys and import module
 sys.path.append(os.getcwd())
 module_path = os.path.dirname(os.getcwd())
 sys.path.append(module_path)
 import DataManager as dm
-from MLP_experiment_frame import mlp_experiment
+import Model as mod
+from MLP_experiment_frame import run_experiment
+from HPtuner import ContinuousDomain, DiscreteDomain
 
 
 # We generate data for our tests and global variables for all tests
@@ -41,6 +44,22 @@ experiment_title = 'IrisClassification'
 total_budget = 100000
 max_budget_per_config = 400
 
+# We initialize an MLP with default hyper-parameters and 4 hidden layers of 20 neurons to classify our data
+# and test its performance on both training and test data sets
+mlp = mod.MLP(hidden_layers_number=4, layers_size=20, max_iter=1000)
 
-mlp_experiment(experiment_title, x_train, t_train, x_test, t_test, total_budget,
+
+search_space = {'alpha': ContinuousDomain(-8, 0, log_scaled=True),
+                'learning_rate_init': ContinuousDomain(-8, 0, log_scaled=True),
+                'batch_size': DiscreteDomain(list(linspace(50, 500, 10, dtype=int).tolist())),
+                'hidden_layers_number': DiscreteDomain(range(1, 21)),
+                'layers_size': DiscreteDomain(range(5, 51))}
+
+grid_search_space = {'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
+                     'learning_rate_init': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
+                     'batch_size': DiscreteDomain([200]),
+                     'hidden_layers_number': DiscreteDomain([1, 5, 10, 15, 20]),
+                     'layers_size': DiscreteDomain([20, 50])}
+
+run_experiment(mlp, experiment_title, x_train, t_train, x_test, t_test, search_space, grid_search_space, total_budget,
                max_budget_per_config, dataset_name, nb_cross_validation)
