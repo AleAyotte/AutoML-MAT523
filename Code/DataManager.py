@@ -8,7 +8,7 @@
 
 """
 
-from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype, load_breast_cancer
+from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype, load_breast_cancer, load_digits
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import numpy as np
@@ -353,6 +353,8 @@ def load_forest_covertypes_dataset(test_split=0.2, random_state=None):
     Loads forest covertypes dataset offered by sklearn
     https://scikit-learn.org/stable/datasets/index.html#forest-covertypes
 
+    :param test_split: test_split: Proportion of the dataset that will be use as test data (Default 0.2 = 20%).
+    :param random_state: Seed generator that will be uses for splitting the data.
     :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
     """
     data = fetch_covtype()
@@ -381,6 +383,29 @@ def load_breast_cancer_dataset(scaled=True, test_split=0.2, random_state=None):
         data = preprocessing.scale(data)
 
     x_train, x_test, t_train, t_test = validation_split(data, target, valid_size=test_split, random_state=random_state)
+    return x_train, t_train, x_test, t_test
+
+
+def load_digits_dataset(test_split=0.2):
+
+    """
+    Load hand written digits classification dataset provided by sklearn
+    https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_digits.html#sklearn.datasets.load_digits
+
+    :param test_split: test_split: Proportion of the dataset that will be use as test data (Default 0.2 = 20%).
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively.
+    """
+    # The digits dataset
+    digits = load_digits()
+
+    # To apply a classifier on this data, we need to flatten the image, to
+    # turn the data in a (samples, feature) matrix:
+    n_samples = len(digits.images)
+    data = digits.images.reshape((n_samples, -1))
+
+    # Split data into train and test subsets
+    x_train, x_test, t_train, t_test = validation_split(data, digits.target, valid_size=test_split)
+
     return x_train, t_train, x_test, t_test
 
 
