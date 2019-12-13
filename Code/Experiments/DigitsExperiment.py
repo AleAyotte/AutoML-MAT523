@@ -6,8 +6,8 @@
 
     @Description:       For this experiment, we will evaluate the performance of all hyper-parameter optimization
                         methods implemented in a simple context with a fixed total budget of
-                        (250x400x2 = 200 000 epochs), a max budget per config of 600 epochs and a number
-                        of 4 cross validation per config tested. For a better understanding the budget will allow
+                        (250x300x2 = 150 000 epochs), a max budget per config of 600 epochs and a number
+                        of 2 cross validation per config tested. For a better understanding the budget will allow
                         our model to evaluate 250 different configurations with non-bandit optimization method.
 
                         Now, considering Digits data set classification problem (1797 instances, 8x8 images, 10 classes)
@@ -36,11 +36,12 @@ from HPtuner import ContinuousDomain, DiscreteDomain
 
 # We generate data for our tests and global variables for all tests
 x_train, t_train, x_test, t_test = dm.load_digits_dataset()
+
 dataset_name = 'Digits'
 nb_cross_validation = 2
 experiment_title = 'Digits'
-total_budget = 200000
-max_budget_per_config = 800
+total_budget = 150000
+max_budget_per_config = 600
 
 # We initialize an MLP with default hyper-parameters and 4 hidden layers of 20 neurons to classify our data
 # and test its performance on both training and test data sets
