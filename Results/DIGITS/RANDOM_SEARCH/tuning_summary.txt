@@ -1,0 +1,25 @@
+Experiment title: Digits 
+
+Total budget (in epochs): 150000 
+
+Max budget per config (in epochs): 600 
+
+Model name : SVM 
+
+Nbr. of cross validation done in each iteration : 2 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : Digits 
+
+Size of training set : 1437 
+
+Number of unique configurations tested : 250 
+
+Number of configurations tested with full budget : 250 
+
+Best accuracy obtained in tuning : 0.989583 
+
+Best hyper-parameters found : {'C': 0.8612079220173113, 'gamma': 0.0005185254636465313} 
+
+Test accuracy : 0.983333
