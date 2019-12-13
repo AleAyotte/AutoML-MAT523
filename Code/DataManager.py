@@ -404,9 +404,9 @@ def load_digits_dataset(test_split=0.2):
     data = digits.images.reshape((n_samples, -1))
 
     # Split data into train and test subsets
-    x_train, x_test, t_train, t_test = train_test_split(data, digits.target, test_size=test_split, shuffle=False)
+    x_train, x_test, t_train, t_test = validation_split(data, digits.target, valid_size=test_split)
 
-    return x_train, x_test, t_train, t_test
+    return x_train, t_train, x_test, t_test
 
 
 def plot_data(data, target):
