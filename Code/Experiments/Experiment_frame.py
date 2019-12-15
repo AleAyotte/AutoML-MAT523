@@ -20,8 +20,8 @@ sys.path.append(module_path)
 from HPtuner import HPtuner
 
 
-def run_experiment(model, experiment_title, search_space, grid_search_space,
-                   total_budget, max_budget_per_config, dataset_name, train_size, x_train=None, t_train=None,
+def run_experiment(model, experiment_title, search_space, total_budget, max_budget_per_config, dataset_name,
+                   train_size, grid_search_space=None, x_train=None, t_train=None,
                    x_test=None, t_test=None, dtset_train=None, dtset_test=None, nb_cross_validation=1, noise=None):
 
     print('\nExperiment in process..\n')
@@ -153,19 +153,21 @@ def run_experiment(model, experiment_title, search_space, grid_search_space,
     hb_results.save_all_results(results_path, experiment_title, dataset_name,
                                 train_size, model_for_hb.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
 
-    """
-    # Grid search
-    """
+    if grid_search_space is not None:
 
-    print('\n\n GRID SEARCH \n\n')
+        """
+        # Grid search
+        """
 
-    # We do a deep copy of our MLP for the test, initialize
-    # a tuner with the grid_search method and set our search space
-    model_for_gs = pickle.loads(save)
-    gs_tuner = HPtuner(model_for_gs, 'grid_search')
-    gs_tuner.set_search_space(grid_search_space)
+        print('\n\n GRID SEARCH \n\n')
 
-    # We execute the tuning and save the results
-    gs_results = gs_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
-    gs_results.save_all_results(results_path, experiment_title, dataset_name,
-                                train_size, model_for_gs.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
+        # We do a deep copy of our MLP for the test, initialize
+        # a tuner with the grid_search method and set our search space
+        model_for_gs = pickle.loads(save)
+        gs_tuner = HPtuner(model_for_gs, 'grid_search')
+        gs_tuner.set_search_space(grid_search_space)
+
+        # We execute the tuning and save the results
+        gs_results = gs_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
+        gs_results.save_all_results(results_path, experiment_title, dataset_name,
+                                    train_size, model_for_gs.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
