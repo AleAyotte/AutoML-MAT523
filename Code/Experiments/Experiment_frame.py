@@ -26,15 +26,18 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
 
     print('\nExperiment in process..\n')
 
+    """
     model.fit(X_train=x_train, t_train=t_train, dtset=dtset_train)
     print('Initial score :', model.score(X=x_test, t=t_test, dtset=dtset_test))
+    """
 
     # We save a deep copy of our model for the tests, and save the results path
     save = pickle.dumps(model)
     results_path = os.path.join(os.path.dirname(module_path), 'Results')
 
     """
-    #Random search
+    """
+    # Random search
     """
 
     print('\n\n RANDOM SEARCH \n\n')
@@ -70,7 +73,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     tpe_results = tpe_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
     tpe_results.save_all_results(results_path, experiment_title, dataset_name,
                                  train_size, model_for_tpe.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
-
+    """
     """
     # Simulated Annealing
     """
@@ -89,7 +92,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     anneal_results.save_all_results(results_path, experiment_title, dataset_name,
                                     train_size, model_for_anneal.score(X=x_test, t=t_test, dtset=dtset_test),
                                     noise=noise)
-
+    """
     """
     # Standard GP with EI acquisition function
     """
@@ -132,7 +135,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     # We save the results
     GP_results2.save_all_results(results_path, experiment_title, dataset_name,
                                  train_size, model_for_GP2.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
-
+    """
     """
     # Hyperband
     """
