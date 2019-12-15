@@ -1,0 +1,27 @@
+Experiment title: SPIRAL2 
+
+Total budget (in epochs): 100000 
+
+Max budget per config (in epochs): 400 
+
+Model name : MLP 
+
+Nbr. of cross validation done in each iteration : 2 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : nSpiral 
+
+Size of training set : 500 
+
+Noise : 0.4 
+
+Number of unique configurations tested : 2688 
+
+Number of configurations tested with full budget : 98 
+
+Best accuracy obtained in tuning : 0.805 
+
+Best hyper-parameters found : {'alpha': 5.499107273466084e-05, 'batch_size': 50, 'hidden_layers_number': 7, 'layers_size': 30, 'learning_rate_init': 0.0007628080321294578} 
+
+Test accuracy : 0.78
