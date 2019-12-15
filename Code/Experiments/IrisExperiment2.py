@@ -64,5 +64,7 @@ grid_search_space = {'alpha': DiscreteDomain(list(linspace(10 ** -8, 1, 5))),
                      'layers_size': DiscreteDomain([20, 50])}
 
 
-run_experiment(mlp, experiment_title, x_train, t_train, x_test, t_test, search_space, grid_search_space, total_budget,
-               max_budget_per_config, dataset_name, nb_cross_validation)
+run_experiment(model=mlp, experiment_title=experiment_title, x_train=x_train, t_train=t_train,
+               x_test=x_test, t_test=t_test, search_space=search_space, grid_search_space=grid_search_space,
+               total_budget=total_budget, max_budget_per_config=max_budget_per_config,
+               dataset_name=dataset_name, nb_cross_validation=nb_cross_validation, train_size=len(x_train))

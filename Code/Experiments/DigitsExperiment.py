@@ -54,5 +54,7 @@ search_space = {'C': ContinuousDomain(-8, 0, log_scaled=True),
 grid_search_space = {'C': DiscreteDomain(list(linspace(10 ** -8, 1, 16))),
                      'gamma': DiscreteDomain(list(linspace(10 ** -8, 1, 16)))}
 
-run_experiment(svm, experiment_title, x_train, t_train, x_test, t_test, search_space, grid_search_space, total_budget,
-               max_budget_per_config, dataset_name, nb_cross_validation)
+run_experiment(model=svm, experiment_title=experiment_title, x_train=x_train, t_train=t_train,
+               x_test=x_test, t_test=t_test, search_space=search_space, grid_search_space=grid_search_space,
+               total_budget=total_budget, max_budget_per_config=max_budget_per_config,
+               dataset_name=dataset_name, nb_cross_validation=nb_cross_validation, train_size=len(x_train))
