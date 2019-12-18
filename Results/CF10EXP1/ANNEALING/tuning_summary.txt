@@ -1,0 +1,25 @@
+Experiment title: CF10Exp1 
+
+Total budget (in epochs): 10000 
+
+Max budget per config (in epochs): 200 
+
+Model name : SimpleResNet 
+
+Nbr. of cross validation done in each iteration : 1 
+
+Validation size in cross validation : 0.2 
+
+Dataset name : CIFAR10 
+
+Size of training set : 5000 
+
+Number of unique configurations tested : 50 
+
+Number of configurations tested with full budget : 50 
+
+Best accuracy obtained in tuning : 0.916465 
+
+Best hyper-parameters found : {'activation': 'mish', 'alpha': 0.00014703085788489727, 'b_size': 180, 'eps': 0.001, 'lr': 0.004951021660306433, 'lr_decay_rate': 21, 'num_res': 6, 'version': 1} 
+
+Test accuracy : 0.928889
