@@ -26,16 +26,13 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
 
     print('\nExperiment in process..\n')
 
-    """
     model.fit(X_train=x_train, t_train=t_train, dtset=dtset_train)
     print('Initial score :', model.score(X=x_test, t=t_test, dtset=dtset_test))
-    """
 
     # We save a deep copy of our model for the tests, and save the results path
     save = pickle.dumps(model)
     results_path = os.path.join(os.path.dirname(module_path), 'Results')
 
-    """
     """
     # Random search
     """
@@ -73,7 +70,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     tpe_results = tpe_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
     tpe_results.save_all_results(results_path, experiment_title, dataset_name,
                                  train_size, model_for_tpe.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
-    """
+
     """
     # Simulated Annealing
     """
@@ -92,7 +89,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     anneal_results.save_all_results(results_path, experiment_title, dataset_name,
                                     train_size, model_for_anneal.score(X=x_test, t=t_test, dtset=dtset_test),
                                     noise=noise)
-    """
+
     """
     # Standard GP with EI acquisition function
     """
@@ -135,7 +132,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     # We save the results
     GP_results2.save_all_results(results_path, experiment_title, dataset_name,
                                  train_size, model_for_GP2.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
-    """
+
     """
     # Hyperband
     """
@@ -155,6 +152,26 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
 
     hb_results.save_all_results(results_path, experiment_title, dataset_name,
                                 train_size, model_for_hb.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
+
+    """
+    # BOHB
+    """
+
+    print('\n\n BOHB \n\n')
+
+    # We do a deep copy of our MLP for the test, initialize a tuner with the standard GP method and set our search space
+    model_for_bohb = pickle.loads(save)
+    model_for_bohb_tuner = HPtuner(model_for_bohb, 'BOHB', total_budget=total_budget,
+                                   max_budget_per_config=max_budget_per_config)
+
+    model_for_bohb_tuner.set_search_space(search_space)
+
+    # We execute the tuning and save the results
+    bohb_results = model_for_bohb_tuner.tune(X=x_train, t=t_train, dtset=dtset_train,
+                                             nb_cross_validation=nb_cross_validation)
+
+    bohb_results.save_all_results(results_path, experiment_title, dataset_name,
+                                  train_size, model_for_bohb.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
 
     if grid_search_space is not None:
 
