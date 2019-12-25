@@ -20,8 +20,6 @@ from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
 from Worker import start_hpbandster_process
 
-
-
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'BOHB']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
@@ -275,7 +273,7 @@ class HPtuner:
         elif self.method == 'annealing':
             self.simulated_annealing(loss)
 
-        elif self.method == 'hyperband':
+        elif self.method == 'hyperband' or self.method == 'BOHB':
             self.hyperband(loss)
 
         else:
