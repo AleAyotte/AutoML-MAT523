@@ -23,3 +23,4 @@ Best accuracy obtained in tuning : 0.989011
 Best hyper-parameters found : {'alpha': 3.2162917550861304e-08, 'batch_size': 290, 'hidden_layers_number': 3, 'layers_size': 22, 'learning_rate_init': 0.038965426799448644} 
 
 Test accuracy : 0.947368
+

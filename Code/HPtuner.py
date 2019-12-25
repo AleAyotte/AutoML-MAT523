@@ -20,8 +20,6 @@ from GPyOpt.methods import BayesianOptimization
 from ResultManagement import ExperimentAnalyst
 from Worker import start_hpbandster_process
 
-
-
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'BOHB']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
@@ -45,16 +43,13 @@ class HPtuner:
         if method not in method_list:
             raise Exception('No such method "{}" implemented for HPtuner'.format(method))
 
-        # We change our model maximal number of epochs to do in training
-        model.set_max_epoch(max_budget_per_config)
-
         self.model = model
         self.method = method
         self.search_space = self.search_space_ignition(method, model)
         self.search_space_modified = False
         self.log_scaled_hyperparameters = False
         self.test_default = test_default_hyperparam
-        self.total_budget = total_budget - int(test_default_hyperparam)*max_budget_per_config
+        self.total_budget = total_budget
         self.max_budget_per_config = max_budget_per_config
         self.tuning_history = ExperimentAnalyst(method, type(model).__name__, total_budget, max_budget_per_config)
 
@@ -243,12 +238,16 @@ class HPtuner:
         :param valid_size: Percentage of training data used as validation data
         """
 
+        # We change our model maximal number of epochs to do in training
+        self.model.set_max_epoch(int(self.max_budget_per_config / nb_cross_validation))
+
         # We set the number of cross validation and valid size used, in tuning history
         self.tuning_history.nbr_of_cross_validation = nb_cross_validation
         self.tuning_history.validation_size = valid_size
 
         # We save results for the default hyperparameters if the user wanted it
         if self.test_default:
+            self.total_budget -= self.max_budget_per_config
             self.test_default_hyperparameters(X, t, dtset, nb_cross_validation, valid_size)
 
         # We reformat the search space
@@ -274,7 +273,7 @@ class HPtuner:
         elif self.method == 'annealing':
             self.simulated_annealing(loss)
 
-        elif self.method == 'hyperband':
+        elif self.method == 'hyperband' or self.method == 'BOHB':
             self.hyperband(loss)
 
         else:

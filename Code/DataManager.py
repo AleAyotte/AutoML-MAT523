@@ -8,7 +8,7 @@
 
 """
 
-from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype, load_breast_cancer
+from sklearn.datasets import make_moons, make_circles, load_iris, fetch_covtype, load_breast_cancer, load_digits
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import numpy as np
@@ -244,11 +244,13 @@ def load_svhn():
     # Data augmentation for training
     transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
                                           transforms.ToTensor(),
-                                          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                                          transforms.Normalize((111.6089, 113.1613, 120.5651),
+                                                               (50.4977, 51.2590, 50.2442))])
 
     # For the test set, we just want to normalize it
     transform_test = transforms.Compose([transforms.ToTensor(),
-                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                                         transforms.Normalize((111.6089, 113.1613, 120.5651),
+                                                              (50.4977, 51.2590, 50.2442))])
 
     trainset = torchvision.datasets.SVHN(root='./data', split='train', download=True, transform=transform_train)
     testset = torchvision.datasets.SVHN(root='./data', split='test', download=True, transform=transform_test)
@@ -285,7 +287,7 @@ def load_mnist():
     Loads the MNIST dataset using pytorch and normalize it using is
     inspired by pytorch tutorial "https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html"
 
-    :return: The train set and the test set of the CIFAR10 dataset as pytorch Dataset
+    :return: The train set and the test set of the MNIST dataset as pytorch Dataset
     """
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.1307], [0.3081])])
     trainset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
@@ -353,6 +355,8 @@ def load_forest_covertypes_dataset(test_split=0.2, random_state=None):
     Loads forest covertypes dataset offered by sklearn
     https://scikit-learn.org/stable/datasets/index.html#forest-covertypes
 
+    :param test_split: test_split: Proportion of the dataset that will be use as test data (Default 0.2 = 20%).
+    :param random_state: Seed generator that will be uses for splitting the data.
     :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively
     """
     data = fetch_covtype()
@@ -381,6 +385,29 @@ def load_breast_cancer_dataset(scaled=True, test_split=0.2, random_state=None):
         data = preprocessing.scale(data)
 
     x_train, x_test, t_train, t_test = validation_split(data, target, valid_size=test_split, random_state=random_state)
+    return x_train, t_train, x_test, t_test
+
+
+def load_digits_dataset(test_split=0.2):
+
+    """
+    Load hand written digits classification dataset provided by sklearn
+    https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_digits.html#sklearn.datasets.load_digits
+
+    :param test_split: test_split: Proportion of the dataset that will be use as test data (Default 0.2 = 20%).
+    :return: 4 numpy arrays for training features, training labels, testing features and testing labels respectively.
+    """
+    # The digits dataset
+    digits = load_digits()
+
+    # To apply a classifier on this data, we need to flatten the image, to
+    # turn the data in a (samples, feature) matrix:
+    n_samples = len(digits.images)
+    data = digits.images.reshape((n_samples, -1))
+
+    # Split data into train and test subsets
+    x_train, x_test, t_train, t_test = validation_split(data, digits.target, valid_size=test_split)
+
     return x_train, t_train, x_test, t_test
 
 

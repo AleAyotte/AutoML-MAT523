@@ -1,0 +1,19 @@
+Experiment title: CF10Exp1 
+
+Model name : SimpleResNet 
+
+Nbr. of cross validation done in each iteration : 1 
+
+Validation size in cross validation : 0.1 
+
+Dataset name : CIFAR10 
+
+Size of training set : 50000 
+
+Number of iterations : 50 
+
+Best accuracy obtained in tuning : 0.925403 
+
+Best hyper-parameters found : {'lr': 0.012557786173696538, 'alpha': 1.7338887196420958e-07, 'eps': 0.001, 'b_size': 160, 'lr_decay_rate': 19, 'activation': 'relu', 'version': 2, 'num_res': 9} 
+
+Test accuracy : 0.920766

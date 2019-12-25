@@ -1,0 +1,19 @@
+Experiment title: SVHNExp1 
+
+Model name : SimpleResNet 
+
+Nbr. of cross validation done in each iteration : 1 
+
+Validation size in cross validation : 0.1 
+
+Dataset name : SVHN 
+
+Size of training set : 50000 
+
+Number of iterations : 50 
+
+Best accuracy obtained in tuning : 0.953994 
+
+Best hyper-parameters found : {'activation': 'mish', 'alpha': 2.8011239410912586e-06, 'b_size': 330, 'dropout': 0.0, 'eps': 1e-05, 'lr': 0.003322679402820605, 'lr_decay_rate': 14, 'num_res': 5, 'version': 1}
+
+Accuracy with test data set : 0.951671
