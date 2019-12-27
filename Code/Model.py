@@ -1164,7 +1164,7 @@ class ResNet(Cnn):
                 self.mixup_index.append(len(conv_list))
                 conv_list.extend([Module.Mixup(res_config[it, 2], self.hparams['b_size'])])
 
-            conv_list.extend([res_module(f_in, res_config[it, 1], self.hparams["activation"],
+            conv_list.extend([res_module(f_in, int(res_config[it, 1]), self.hparams["activation"],
                                          twice=(it != 0), subsample=(it != 0))])
 
             # Update features maps information
@@ -1172,15 +1172,15 @@ class ResNet(Cnn):
                 f_in *= 2
                 size = size / 2
 
-            for _ in range(res_config[it, 0] - 1):
-                conv_list.extend([res_module(f_in, res_config[it, 1], self.hparams["activation"],
+            for _ in range(int(res_config[it, 0]) - 1):
+                conv_list.extend([res_module(f_in, int(res_config[it, 1]), self.hparams["activation"],
                                              twice=False, subsample=False)])
 
         if pool2[0] != 0:
             conv_list.extend([self.build_pooling_layer(pool2)])
 
         # We need to compute the input size of the fully connected layer
-        size = self.conv_out_size(size, res_config[-1, 1], 2, pool2)
+        size = self.conv_out_size(size, int(res_config[-1, 1]), 2, pool2)
 
         self.conv = torch.nn.Sequential(*conv_list)
 
@@ -1239,28 +1239,34 @@ class ResNet(Cnn):
 
         if mixup_position is not None:
             lamb, index = self.conv[mixup_position].get_mix_params()
-            return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred[index], target)
+            # return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred[index], target)
+            return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred, target[index])
         else:
             return self.criterion(pred, target)
 
-    def init_mixup(self):
+    def disable_mixup(self, index=None):
+        if index is not None:
+            self.conv[index].enable = False
+
+    def init_mixup(self, mixup_layer):
 
         """
         Initialize the mixup modules
 
-        :return:
+        :param mixup_layer: The index of the last enabled mixup module.
+        :return: Index of the layer where the mixup is done
         """
 
         if len(self.mixup_index) > 0:
 
-            # We disable all mixup modules
-            for index in self.mixup_index:
-                self.conv[index].enable = False
+            # We disable last used mixup module
+            self.disable_mixup(mixup_layer)
 
             # We select randomly a mixup module and we activate him
             layer = self.mixup_index[random.randint(0, len(self.mixup_index) - 1)]
             self.conv[layer].sample()
 
+            # Return the index of the next mixup layer
             return layer
 
         else:
@@ -1302,7 +1308,7 @@ class ResNet(Cnn):
         for epoch in range(self.num_epoch):
             sum_loss = 0.0
             it = 0
-
+            mixup_layer = None
             # ------------------------------------------------------------------------------------------
             #                                       TRAINING PART
             # ------------------------------------------------------------------------------------------
@@ -1310,11 +1316,14 @@ class ResNet(Cnn):
                 features, labels = data[0].to(self.device_), data[1].to(self.device_)
 
                 optimizer.zero_grad()
-                self.init_mixup()
+
+                # Warn up
+                if epoch > 30:
+                    mixup_layer = self.init_mixup(mixup_layer)
 
                 # training step
                 pred = self(features)
-                loss = self.mixup_criterion(pred, labels)
+                loss = self.mixup_criterion(pred, labels, mixup_layer)
                 loss.backward()
                 optimizer.step()
 
@@ -1322,26 +1331,28 @@ class ResNet(Cnn):
                 sum_loss += loss
                 it += 1
 
+            self.disable_mixup(mixup_layer)
             current_accuracy = self.accuracy(dt_loader=valid_loader)
 
             if verbose:
                 end = time.time()
                 print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
                       " best accuracy: {:.2f}%, best epoch {:d}:".format
-                      (epoch + 1, end - begin, sum_loss / it, current_accuracy * 100, best_accuracy * 100,
-                       best_epoch + 1))
+                      (epoch + 1, end - begin, sum_loss / it, current_accuracy * 100,
+                       best_accuracy * 100, best_epoch + 1))
                 begin = time.time()
 
             # ------------------------------------------------------------------------------------------
             #                                   EARLY STOPPING PART
             # ------------------------------------------------------------------------------------------
+            if current_accuracy - best_accuracy >= self.tol / 2:
+                # We make a save of the model at his best epoch
+                self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
+
             if current_accuracy - best_accuracy >= self.tol:
                 best_accuracy = current_accuracy
                 best_epoch = epoch
                 num_epoch_no_change = 0
-
-                # We make a save of the model at his best epoch
-                self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
 
             elif num_epoch_no_change < self.num_stop_epoch - 1:
                 num_epoch_no_change += 1
