@@ -1164,6 +1164,7 @@ class ResNet(Cnn):
                 self.mixup_index.append(len(conv_list))
                 conv_list.extend([Module.Mixup(res_config[it, 2], self.hparams['b_size'])])
 
+            # Sub sampling part
             conv_list.extend([res_module(f_in, int(res_config[it, 1]), self.hparams["activation"],
                                          twice=(it != 0), subsample=(it != 0))])
 
@@ -1239,7 +1240,6 @@ class ResNet(Cnn):
 
         if mixup_position is not None:
             lamb, index = self.conv[mixup_position].get_mix_params()
-            # return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred[index], target)
             return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred, target[index])
         else:
             return self.criterion(pred, target)
@@ -1292,7 +1292,8 @@ class ResNet(Cnn):
         num_epoch_no_change = 0
         lr_decay_step = 0
         learning_rate = self.hparams["lr"]
-
+        mixup_enable = False
+        mixup_layer = None
         # Go in training to activate dropout
         self.train()
 
@@ -1308,7 +1309,7 @@ class ResNet(Cnn):
         for epoch in range(self.num_epoch):
             sum_loss = 0.0
             it = 0
-            mixup_layer = None
+
             # ------------------------------------------------------------------------------------------
             #                                       TRAINING PART
             # ------------------------------------------------------------------------------------------
@@ -1318,7 +1319,7 @@ class ResNet(Cnn):
                 optimizer.zero_grad()
 
                 # Warn up
-                if epoch > 30:
+                if mixup_enable:
                     mixup_layer = self.init_mixup(mixup_layer)
 
                 # training step
@@ -1331,28 +1332,32 @@ class ResNet(Cnn):
                 sum_loss += loss
                 it += 1
 
+            # We disable all mixup module
             self.disable_mixup(mixup_layer)
+            mixup_layer = None
+
             current_accuracy = self.accuracy(dt_loader=valid_loader)
 
             if verbose:
                 end = time.time()
                 print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
-                      " best accuracy: {:.2f}%, best epoch {:d}:".format
+                      " best accuracy: {:.2f}%, best epoch: {:d}, learning_rate: {}:".format
                       (epoch + 1, end - begin, sum_loss / it, current_accuracy * 100,
-                       best_accuracy * 100, best_epoch + 1))
+                       best_accuracy * 100, best_epoch + 1, learning_rate))
                 begin = time.time()
 
             # ------------------------------------------------------------------------------------------
             #                                   EARLY STOPPING PART
             # ------------------------------------------------------------------------------------------
-            if current_accuracy - best_accuracy >= self.tol / 2:
+            # if current_accuracy - best_accuracy >= self.tol / 2:
                 # We make a save of the model at his best epoch
-                self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
+                # self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
 
             if current_accuracy - best_accuracy >= self.tol:
                 best_accuracy = current_accuracy
                 best_epoch = epoch
                 num_epoch_no_change = 0
+                self.save_checkpoint(epoch, sum_loss / it, current_accuracy)
 
             elif num_epoch_no_change < self.num_stop_epoch - 1:
                 num_epoch_no_change += 1
@@ -1362,6 +1367,8 @@ class ResNet(Cnn):
                 learning_rate /= self.hparams["lr_decay_rate"]
                 optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
                                              eps=self.hparams["eps"], amsgrad=False)
+                # We activate the mixup training after the first learning rate decay
+                mixup_enable = True
                 num_epoch_no_change = 0
 
             else:
