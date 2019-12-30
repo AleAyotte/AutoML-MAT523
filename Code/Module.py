@@ -257,6 +257,9 @@ class Mixup(torch.nn.Module):
         :return: Return mixed data if the network is in train mode and the module is enable.
         """
         if self.training and self.enable:
-            return self.lamb*x + (1 - self.lamb)*x[self.permut]
+            lamb = torch.from_numpy(np.array([self.lamb]).astype('float32')).cuda()
+            lamb = torch.autograd.Variable(lamb)
+            # return self.lamb*x + (1 - self.lamb)*x[self.permut]
+            return lamb*x + (1 - lamb)*x[self.permut]
         else:
             return x
