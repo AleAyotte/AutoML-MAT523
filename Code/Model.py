@@ -1375,7 +1375,7 @@ class ResNet(Cnn):
                 break
 
         # We restore the weight of the model at his best epoch
-        self.restore()
+        # self.restore()
 
 
 class SimpleResNet(ResNet):
