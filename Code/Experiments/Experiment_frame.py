@@ -22,7 +22,8 @@ from HPtuner import HPtuner
 
 def run_experiment(model, experiment_title, search_space, total_budget, max_budget_per_config, dataset_name,
                    train_size, grid_search_space=None, x_train=None, t_train=None,
-                   x_test=None, t_test=None, dtset_train=None, dtset_test=None, nb_cross_validation=1, noise=None):
+                   x_test=None, t_test=None, dtset_train=None, dtset_test=None, nb_cross_validation=1, noise=None,
+                   valid_size=0.2):
 
     print('\nExperiment in process..\n')
 
@@ -49,7 +50,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     rs_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
-    rs_results = rs_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
+    rs_results = rs_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation,
+                               valid_size=valid_size)
     rs_results.save_all_results(results_path, experiment_title, dataset_name,
                                 train_size, model_for_rs.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
 
@@ -67,7 +69,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     tpe_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
-    tpe_results = tpe_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
+    tpe_results = tpe_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation,
+                                 valid_size=valid_size)
     tpe_results.save_all_results(results_path, experiment_title, dataset_name,
                                  train_size, model_for_tpe.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
 
@@ -85,7 +88,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     anneal_tuner.set_search_space(search_space)
 
     # We execute the tuning and save the results
-    anneal_results = anneal_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
+    anneal_results = anneal_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation,
+                                       valid_size=valid_size)
     anneal_results.save_all_results(results_path, experiment_title, dataset_name,
                                     train_size, model_for_anneal.score(X=x_test, t=t_test, dtset=dtset_test),
                                     noise=noise)
@@ -105,7 +109,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
 
     # We execute the tuning using default parameter for GP
     # ('GP' as method type, 5 initial points to evaluate before the beginning and 'EI' acquisition)
-    GP_results = GP_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
+    GP_results = GP_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation,
+                               valid_size=valid_size)
 
     # We save the results
     GP_results.save_all_results(results_path, experiment_title, dataset_name,
@@ -127,7 +132,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     # We execute the tuning using default parameter for GP except MPI acquisition
     # ('GP' as method type, 5 initial points to evaluate before the beginning and 'MPI' acquisition)
     GP_results2 = GP_tuner2.tune(X=x_train, t=t_train, dtset=dtset_train,
-                                 nb_cross_validation=nb_cross_validation, acquisition_function='MPI')
+                                 nb_cross_validation=nb_cross_validation, acquisition_function='MPI',
+                                 valid_size=valid_size)
 
     # We save the results
     GP_results2.save_all_results(results_path, experiment_title, dataset_name,
@@ -148,7 +154,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
 
     # We execute the tuning and save the results
     hb_results = model_for_hb_tuner.tune(X=x_train, t=t_train, dtset=dtset_train,
-                                         nb_cross_validation=nb_cross_validation)
+                                         nb_cross_validation=nb_cross_validation,
+                                         valid_size=valid_size)
 
     hb_results.save_all_results(results_path, experiment_title, dataset_name,
                                 train_size, model_for_hb.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
@@ -168,7 +175,8 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
 
     # We execute the tuning and save the results
     bohb_results = model_for_bohb_tuner.tune(X=x_train, t=t_train, dtset=dtset_train,
-                                             nb_cross_validation=nb_cross_validation)
+                                             nb_cross_validation=nb_cross_validation,
+                                             valid_size=valid_size)
 
     bohb_results.save_all_results(results_path, experiment_title, dataset_name,
                                   train_size, model_for_bohb.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
@@ -188,6 +196,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
         gs_tuner.set_search_space(grid_search_space)
 
         # We execute the tuning and save the results
-        gs_results = gs_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation)
+        gs_results = gs_tuner.tune(X=x_train, t=t_train, dtset=dtset_train, nb_cross_validation=nb_cross_validation,
+                                   valid_size=valid_size)
         gs_results.save_all_results(results_path, experiment_title, dataset_name,
                                     train_size, model_for_gs.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
