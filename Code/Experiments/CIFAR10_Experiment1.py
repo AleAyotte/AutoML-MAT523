@@ -61,4 +61,4 @@ search_space = {'lr': ContinuousDomain(-7, -1, log_scaled=True),
 
 run_experiment(model=net, experiment_title=experiment_title, search_space=search_space, total_budget=total_budget,
                max_budget_per_config=max_budget_per_config, dataset_name=dataset_name, train_size=train_size,
-               dtset_train=d_train, dtset_test=d_test, nb_cross_validation=nb_cross_validation)
+               dtset_train=d_train, dtset_test=d_test, nb_cross_validation=nb_cross_validation, valid_size=0.10)
