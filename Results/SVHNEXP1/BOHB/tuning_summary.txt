@@ -1,0 +1,25 @@
+Experiment title: SVHNExp1 
+
+Total budget (in epochs): 7500 
+
+Max budget per config (in epochs): 150 
+
+Model name : SimpleResNet 
+
+Nbr. of cross validation done in each iteration : 1 
+
+Validation size in cross validation : 0.1 
+
+Dataset name : SVHN 
+
+Size of training set : 50000 
+
+Number of unique configurations tested : 256 
+
+Number of configurations tested with full budget : 20 
+
+Best accuracy obtained in tuning : 0.953835 
+
+Best hyper-parameters found : {'activation': 'swish', 'alpha': 4.766128335772241e-09, 'b_size': 320, 'eps': 1e-06, 'lr': 0.0005978739162492518, 'lr_decay_rate': 39, 'num_res': 5, 'version': 2} 
+
+Test accuracy : 0.955363
