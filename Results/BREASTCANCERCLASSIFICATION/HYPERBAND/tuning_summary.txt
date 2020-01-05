@@ -1,8 +1,8 @@
 Experiment title: BreastCancerClassification 
 
-Total budget (in epochs): 10000 
+Total budget (in epochs): 250000 
 
-Max budget per config (in epochs): 200 
+Max budget per config (in epochs): 1000 
 
 Model name : MLP 
 
@@ -14,12 +14,13 @@ Dataset name : Breast_Cancer_Wisconsin
 
 Size of training set : 455 
 
-Number of unique configurations tested : 256 
+Number of unique configurations tested : 6299 
 
-Number of configurations tested with full budget : 20 
+Number of configurations tested with full budget : 81 
 
 Best accuracy obtained in tuning : 0.989011 
 
-Best hyper-parameters found : {'alpha': 0.000278461025197872, 'batch_size': 100, 'hidden_layers_number': 1, 'layers_size': 36, 'learning_rate_init': 0.013947265993319477} 
+Best hyper-parameters found : {'alpha': 3.2162917550861304e-08, 'batch_size': 290, 'hidden_layers_number': 3, 'layers_size': 22, 'learning_rate_init': 0.038965426799448644} 
 
-Test accuracy : 0.973684
+Test accuracy : 0.947368
+
