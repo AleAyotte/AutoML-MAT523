@@ -623,8 +623,13 @@ class Cnn(Model, torch.nn.Module):
         """
 
         if type(m) == torch.nn.Linear:
-            torch.nn.init.xavier_normal_(m.weight)
-            torch.nn.init.zeros_(m.weight)
+            # torch.nn.init.xavier_normal_(m.weight)
+            if self.hparams["activation"] == "relu" and self.hparams["activation"] == "sigmoide":
+                torch.nn.init.kaiming_normal_(m.weight, nonlinearity=self.hparams["activation"])
+            else:
+                torch.nn.init.kaiming_normal_(m.weight)
+
+            torch.nn.init.zeros_(m.bias)
 
         elif type(m) == torch.nn.Conv2d:
 
@@ -1129,6 +1134,9 @@ class ResNet(Cnn):
         # ------------------------------------------------------------------------------------------
         #                                   CONVOLUTIONAL PART
         # ------------------------------------------------------------------------------------------
+        # We need a save the position of the mixup module in sequential container
+        self.mixup_index = []
+
         # First convolutional layer
         conv_list = [torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2])),
                      torch.nn.BatchNorm2d(conv[0]),
@@ -1153,16 +1161,8 @@ class ResNet(Cnn):
         # Number of features that enter in the first residual module
         f_in = conv[0]
 
-        # We need a save the position of the mixup module in sequential container
-        self.mixup_index = []
-
         # Construct the chain of residual module
         for it in range(len(res_config)):
-
-            # We adding a mixup module.
-            if res_config[it, 2] != 0:
-                self.mixup_index.append(len(conv_list))
-                conv_list.extend([Module.Mixup(res_config[it, 2], self.hparams['b_size'])])
 
             # Sub sampling part
             conv_list.extend([res_module(f_in, int(res_config[it, 1]), self.hparams["activation"],
@@ -1176,6 +1176,11 @@ class ResNet(Cnn):
             for _ in range(int(res_config[it, 0]) - 1):
                 conv_list.extend([res_module(f_in, int(res_config[it, 1]), self.hparams["activation"],
                                              twice=False, subsample=False)])
+
+            # We adding a mixup module.
+            if res_config[it, 2] != 0:
+                self.mixup_index.append(len(conv_list))
+                conv_list.extend([Module.Mixup(res_config[it, 2], self.hparams['b_size'])])
 
         if pool2[0] != 0:
             conv_list.extend([self.build_pooling_layer(pool2)])
@@ -1320,6 +1325,7 @@ class ResNet(Cnn):
             # ------------------------------------------------------------------------------------------
             for step, data in enumerate(train_loader, 0):
                 features, labels = data[0].to(self.device_), data[1].to(self.device_)
+                # features, labels = torch.autograd.Variable(features), torch.autograd.Variable(labels)
 
                 optimizer.zero_grad()
 
