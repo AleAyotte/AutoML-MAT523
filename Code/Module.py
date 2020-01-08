@@ -240,6 +240,8 @@ class Mixup(torch.nn.Module):
 
         self.permut = torch.randperm(self.batch_size)
 
+        return self.permut, self.lamb
+
     def get_mix_params(self):
         """
 
