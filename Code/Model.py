@@ -1227,7 +1227,7 @@ class ResNet(Cnn):
         output = self.fc(conv_out.view(-1, self.num_flat_features))
         return output
 
-    def mixup_criterion(self, pred, target, mixup_position=None):
+    def mixup_criterion(self, pred, target, mixup_position=None, lamb=None, permut=None):
 
         """
         Transform target into one hot vector and apply mixup on it
@@ -1235,12 +1235,14 @@ class ResNet(Cnn):
         :param pred:
         :param target:
         :param mixup_position:
+        :param lamb:
+        :param permut:
         :return:
         """
 
         if mixup_position is not None:
-            lamb, index = self.conv[mixup_position].get_mix_params()
-            return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred, target[index])
+            # lamb, index = self.conv[mixup_position].get_mix_params()
+            return lamb*self.criterion(pred, target) + (1-lamb)*self.criterion(pred, target[permut])
         else:
             return self.criterion(pred, target)
 
@@ -1264,13 +1266,13 @@ class ResNet(Cnn):
 
             # We select randomly a mixup module and we activate him
             layer = self.mixup_index[random.randint(0, len(self.mixup_index) - 1)]
-            self.conv[layer].sample()
+            lamb, permut = self.conv[layer].sample()
 
             # Return the index of the next mixup layer
-            return layer
+            return layer, lamb, permut
 
         else:
-            return None
+            return None, None, None
 
     def fit(self, X_train=None, t_train=None, dtset=None, verbose=False, gpu=True):
 
@@ -1294,7 +1296,10 @@ class ResNet(Cnn):
         learning_rate = self.hparams["lr"]
         mixup_enable = False
         mixup_layer = None
-        # Go in training to activate dropout
+        lamb = None
+        permut = None
+
+        # Go in training to activate mixup
         self.train()
 
         self.apply(self.init_weights)
@@ -1320,11 +1325,11 @@ class ResNet(Cnn):
 
                 # Warn up
                 if mixup_enable:
-                    mixup_layer = self.init_mixup(mixup_layer)
+                    mixup_layer, lamb, permut = self.init_mixup(mixup_layer)
 
                 # training step
                 pred = self(features)
-                loss = self.mixup_criterion(pred, labels, mixup_layer)
+                loss = self.mixup_criterion(pred, labels, mixup_layer, lamb, permut)
                 loss.backward()
                 optimizer.step()
 
@@ -1334,16 +1339,16 @@ class ResNet(Cnn):
 
             # We disable all mixup module
             self.disable_mixup(mixup_layer)
-            mixup_layer = None
+            # mixup_layer = None
 
             current_accuracy = self.accuracy(dt_loader=valid_loader)
 
             if verbose:
                 end = time.time()
                 print("\n epoch: {:d}, Execution time: {:.2f}, average_loss: {:.4f}, validation_accuracy: {:.2f}%,"
-                      " best accuracy: {:.2f}%, best epoch: {:d}, learning_rate: {}:".format
+                      " best accuracy: {:.2f}%, best epoch: {:d}, learning_rate: {}, mixup: {}, mixup_layer: {}:".format
                       (epoch + 1, end - begin, sum_loss / it, current_accuracy * 100,
-                       best_accuracy * 100, best_epoch + 1, learning_rate))
+                       best_accuracy * 100, best_epoch + 1, learning_rate, mixup_enable, mixup_layer))
                 begin = time.time()
 
             # ------------------------------------------------------------------------------------------
@@ -1363,12 +1368,14 @@ class ResNet(Cnn):
                 num_epoch_no_change += 1
 
             elif lr_decay_step < self.num_lr_decay:
-                lr_decay_step += 1
-                learning_rate /= self.hparams["lr_decay_rate"]
-                optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
-                                             eps=self.hparams["eps"], amsgrad=False)
                 # We activate the mixup training after the first learning rate decay
-                mixup_enable = True
+                if lr_decay_step == 1:
+                    mixup_enable = True
+                else:
+                    learning_rate /= self.hparams["lr_decay_rate"]
+                    optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"]
+                                                 , eps=self.hparams["eps"], amsgrad=False)
+                lr_decay_step += 1
                 num_epoch_no_change = 0
 
             else:
