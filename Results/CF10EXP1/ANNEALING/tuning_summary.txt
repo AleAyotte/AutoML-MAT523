@@ -8,7 +8,7 @@ Model name : SimpleResNet
 
 Nbr. of cross validation done in each iteration : 1 
 
-Validation size in cross validation : 0.2 
+Validation size in cross validation : 0.1 
 
 Dataset name : CIFAR10 
 
@@ -18,8 +18,8 @@ Number of unique configurations tested : 50
 
 Number of configurations tested with full budget : 50 
 
-Best accuracy obtained in tuning : 0.916465 
+Best accuracy obtained in tuning : 0.9194 
 
-Best hyper-parameters found : {'activation': 'mish', 'alpha': 0.00014703085788489727, 'b_size': 180, 'eps': 0.001, 'lr': 0.004951021660306433, 'lr_decay_rate': 21, 'num_res': 6, 'version': 1} 
+Best hyper-parameters found : {'activation': 'swish', 'alpha': 8.450400549503083e-06, 'b_size': 200, 'eps': 0.0001, 'lr': 0.012608347454219898, 'lr_decay_rate': 3, 'num_res': 5, 'version': 1} 
 
-Test accuracy : 0.928889
+Test accuracy : 0.9175
