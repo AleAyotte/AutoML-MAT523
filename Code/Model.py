@@ -1325,7 +1325,7 @@ class ResNet(Cnn):
             # ------------------------------------------------------------------------------------------
             for step, data in enumerate(train_loader, 0):
                 features, labels = data[0].to(self.device_), data[1].to(self.device_)
-                # features, labels = torch.autograd.Variable(features), torch.autograd.Variable(labels)
+                features, labels = torch.autograd.Variable(features), torch.autograd.Variable(labels)
 
                 optimizer.zero_grad()
 
@@ -1375,12 +1375,13 @@ class ResNet(Cnn):
 
             elif lr_decay_step < self.num_lr_decay:
                 # We activate the mixup training after the first learning rate decay
-                if lr_decay_step == 1:
-                    mixup_enable = True
-                else:
-                    learning_rate /= self.hparams["lr_decay_rate"]
-                    optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"]
-                                                 , eps=self.hparams["eps"], amsgrad=False)
+                # if lr_decay_step == 1:
+                #     mixup_enable = True
+                # else:
+                mixup_enable = True
+                learning_rate /= self.hparams["lr_decay_rate"]
+                optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"]
+                                             , eps=self.hparams["eps"], amsgrad=False)
                 lr_decay_step += 1
                 num_epoch_no_change = 0
 
