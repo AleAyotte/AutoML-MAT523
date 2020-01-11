@@ -1380,8 +1380,12 @@ class ResNet(Cnn):
                 # else:
                 mixup_enable = True
                 learning_rate /= self.hparams["lr_decay_rate"]
-                optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"]
-                                             , eps=self.hparams["eps"], amsgrad=False)
+                if lr_decay_step < 1:
+                    optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"]
+                                                 , eps=self.hparams["eps"], amsgrad=False)
+                else:
+                    optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate, weight_decay=self.hparams["alpha"],
+                                                momentum=0.9, nesterov=True)
                 lr_decay_step += 1
                 num_epoch_no_change = 0
 
