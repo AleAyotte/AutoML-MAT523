@@ -1138,10 +1138,10 @@ class ResNet(Cnn):
         self.mixup_index = []
 
         # First convolutional layer
-        conv_list = [torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2])),
-                     torch.nn.BatchNorm2d(conv[0]),
-                     self.get_activation_function()]
+        conv_list = [torch.nn.Conv2d(input_dim[2], conv[0], conv[1], padding=self.pad_size(conv[1], conv[2]))]
 
+        if self.hparams['version'] == 1:
+            conv_list.extend([torch.nn.BatchNorm2d(conv[0]), self.get_activation_function()])
         if pool1[0] != 0:
             conv_list.extend([self.build_pooling_layer(pool1)])
 
