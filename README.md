@@ -31,6 +31,7 @@ The present package is written in **Python 3.7**. In order to run a full capacit
 |Activation | Categorical | N/A| N/A| N/A| ELU, ReLU, Swish[1], Mish[2]|
 |Version | Categorical | N/A| N/A| N/A| Post-Act, Pre-Act|
 
+<br/><br/>
 ### SVHN
 
 ![SVHN](./Assets/SVHN.png)
@@ -48,6 +49,7 @@ The present package is written in **Python 3.7**. In order to run a full capacit
 |Activation | Categorical | N/A| N/A| N/A| ELU, ReLU, Swish[1], Mish[2]|
 |Version | Categorical | N/A| N/A| N/A| Post-Act, Pre-Act|
 
+<br/><br/>
 ### NSPIRAL
 
 ![NSPIRAL](./Assets/SPIRAL2_1.png)
@@ -63,6 +65,7 @@ The present package is written in **Python 3.7**. In order to run a full capacit
 |# Layer | Discrete | 1| 20| 1| N/A|  
 |Layer size | Discrete | 5| 50| 1| N/A|   
 
+<br/><br/>
 ### DIGITS
 
 ![DIGITS](./Assets/DIGITS.png)
@@ -73,7 +76,8 @@ The present package is written in **Python 3.7**. In order to run a full capacit
 | --- | --- | --- | --- | --- | --- |
 |C | Log-Uniform | 1e-8| 1e0| N/A| N/A|
 |Gamma | Log-Uniform | 1e-8| 1e0| N/A| N/A |     
- 
+
+<br/><br/>
 ### IRIS
 
 ![IRIS](./Assets/IRIS2.png)
@@ -88,6 +92,7 @@ The present package is written in **Python 3.7**. In order to run a full capacit
 |# Layer | Discrete | 1| 50| 1| N/A|  
 |Layer size | Discrete | 5| 50| 1| N/A|   
 
+<br/><br/>
 ### Breast Cancer Wisconsin
 
 ![BreastCancer](./Assets/BreastCancer.png)
