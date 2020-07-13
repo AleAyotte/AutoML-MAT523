@@ -143,7 +143,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
                                  train_size, model_for_GP2.score(X=x_test, t=t_test, dtset=dtset_test), noise=noise)
     """
     
-        """
+    """
     # Standard GP with NEI acquisition function
     """
 
