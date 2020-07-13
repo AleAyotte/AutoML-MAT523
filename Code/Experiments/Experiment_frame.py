@@ -147,7 +147,7 @@ def run_experiment(model, experiment_title, search_space, total_budget, max_budg
     # Standard GP with NEI acquisition function
     """
 
-    print('\n\n GP WITH MPI \n\n')
+    print('\n\n GP WITH NEI \n\n')
 
     # We do a deep copy of our MLP for the test, initialize a tuner with the standard GP method and set our search space
     model_for_GP2 = pickle.loads(save)
