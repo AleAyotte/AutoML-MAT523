@@ -23,7 +23,7 @@ from Worker import start_hpbandster_process
 method_list = ['grid_search', 'random_search', 'gaussian_process', 'tpe', 'annealing', 'hyperband', 'BOHB']
 domain_type_list = ['ContinuousDomain', 'DiscreteDomain', 'CategoricalDomain']
 gaussian_process_methods = ['GP', 'GP_MCMC']
-acquistions_type = ['EI', 'MPI']
+acquistions_type = ['EI', 'MPI', 'NEI']
 
 
 class HPtuner:
